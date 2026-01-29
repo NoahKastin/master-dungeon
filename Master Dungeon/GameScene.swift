@@ -217,17 +217,20 @@ class GameScene: SKScene {
     }
 
     private func setupUI() {
-        let safeArea = view?.safeAreaInsets ?? .zero
+        let rawSafeArea = view?.safeAreaInsets ?? .zero
+        // Use fallback values for Dynamic Island/notch iPhones when not yet available
+        let safeTop = rawSafeArea.top > 0 ? rawSafeArea.top : 59
+        let safeBottom = rawSafeArea.bottom > 0 ? rawSafeArea.bottom : 34
 
         // HP display (top left)
         let hp = HPDisplay()
-        hp.position = CGPoint(x: 30, y: size.height - safeArea.top - 40)
+        hp.position = CGPoint(x: 30, y: size.height - safeTop - 40)
         uiLayer.addChild(hp)
         hpDisplay = hp
 
         // Mana display (top center, between HP and back button)
         let mana = ManaDisplay()
-        mana.position = CGPoint(x: size.width / 2, y: size.height - safeArea.top - 40)
+        mana.position = CGPoint(x: size.width / 2, y: size.height - safeTop - 40)
         uiLayer.addChild(mana)
         manaBar = mana
 
@@ -235,7 +238,7 @@ class GameScene: SKScene {
         let spells = player.loadout.spells
         if !spells.isEmpty {
             let bar = SpellBar(spells: spells, slotSize: 60)
-            bar.position = CGPoint(x: size.width / 2, y: safeArea.bottom + 50)
+            bar.position = CGPoint(x: size.width / 2, y: safeBottom + 50)
             bar.onSpellSelected = { [weak self] spell in
                 self?.selectSpell(spell)
             }
@@ -244,10 +247,10 @@ class GameScene: SKScene {
         }
 
         // Objective label (top center, below safe area) - supports multi-line wrapping
-        let objective = SKLabelNode(fontNamed: "Helvetica-Bold")
+        let objective = SKLabelNode(fontNamed: "Cochin-Bold")
         objective.fontSize = 16
         objective.fontColor = SKColor(white: 0.9, alpha: 1.0)
-        objective.position = CGPoint(x: size.width / 2, y: size.height - safeArea.top - 70)
+        objective.position = CGPoint(x: size.width / 2, y: size.height - safeTop - 70)
         objective.horizontalAlignmentMode = .center
         objective.verticalAlignmentMode = .top
         objective.numberOfLines = 0  // Unlimited lines
@@ -258,7 +261,7 @@ class GameScene: SKScene {
 
         // Back button (top right)
         let backContainer = SKNode()
-        backContainer.position = CGPoint(x: size.width - 50, y: size.height - safeArea.top - 40)
+        backContainer.position = CGPoint(x: size.width - 50, y: size.height - safeTop - 40)
         backContainer.zPosition = 100
 
         let backBg = SKShapeNode(rectOf: CGSize(width: 70, height: 30), cornerRadius: 8)
@@ -267,7 +270,7 @@ class GameScene: SKScene {
         backBg.lineWidth = 1
         backContainer.addChild(backBg)
 
-        let backLabel = SKLabelNode(fontNamed: "Helvetica")
+        let backLabel = SKLabelNode(fontNamed: "Cochin")
         backLabel.text = "← Back"
         backLabel.fontSize = 14
         backLabel.fontColor = .white
@@ -608,7 +611,7 @@ class GameScene: SKScene {
         container.addChild(body)
 
         // HP indicator
-        let hpLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        let hpLabel = SKLabelNode(fontNamed: "Cochin-Bold")
         hpLabel.text = "\(hp)"
         hpLabel.fontSize = 12
         hpLabel.fontColor = .white
@@ -687,7 +690,7 @@ class GameScene: SKScene {
 
         // Injured indicator
         if injured {
-            let cross = SKLabelNode(fontNamed: "Helvetica-Bold")
+            let cross = SKLabelNode(fontNamed: "Cochin-Bold")
             cross.text = "+"
             cross.fontSize = 16
             cross.fontColor = .white
@@ -1191,7 +1194,7 @@ class GameScene: SKScene {
     }
 
     private func showDamageNumber(_ damage: Int, at position: CGPoint) {
-        let label = SKLabelNode(fontNamed: "Helvetica-Bold")
+        let label = SKLabelNode(fontNamed: "Cochin-Bold")
         label.text = "-\(damage)"
         label.fontSize = 24
         label.fontColor = .red
@@ -1208,7 +1211,7 @@ class GameScene: SKScene {
     }
 
     private func showHealingNumber(_ healing: Int, at position: CGPoint) {
-        let label = SKLabelNode(fontNamed: "Helvetica-Bold")
+        let label = SKLabelNode(fontNamed: "Cochin-Bold")
         label.text = "+\(healing)"
         label.fontSize = 24
         label.fontColor = .green
@@ -1242,7 +1245,7 @@ class GameScene: SKScene {
     }
 
     private func showStatusText(_ text: String, at position: CGPoint, color: SKColor) {
-        let label = SKLabelNode(fontNamed: "Helvetica")
+        let label = SKLabelNode(fontNamed: "Cochin")
         label.text = text
         label.fontSize = 16
         label.fontColor = color
@@ -1271,7 +1274,7 @@ class GameScene: SKScene {
             message = "Invalid target!"
         }
 
-        let label = SKLabelNode(fontNamed: "Helvetica-Bold")
+        let label = SKLabelNode(fontNamed: "Cochin-Bold")
         label.text = message
         label.fontSize = 20
         label.fontColor = .red
@@ -1503,7 +1506,7 @@ class GameScene: SKScene {
         overlay.zPosition = 200
         addChild(overlay)
 
-        let gameOverLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        let gameOverLabel = SKLabelNode(fontNamed: "Cochin-Bold")
         gameOverLabel.text = "Game Over"
         gameOverLabel.fontSize = 36
         gameOverLabel.fontColor = .red
@@ -1511,7 +1514,7 @@ class GameScene: SKScene {
         gameOverLabel.zPosition = 201
         addChild(gameOverLabel)
 
-        let restartLabel = SKLabelNode(fontNamed: "Helvetica")
+        let restartLabel = SKLabelNode(fontNamed: "Cochin")
         restartLabel.text = "Tap to return to spell selection"
         restartLabel.fontSize = 18
         restartLabel.fontColor = .white

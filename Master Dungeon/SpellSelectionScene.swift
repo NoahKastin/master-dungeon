@@ -35,6 +35,7 @@ class SpellSelectionScene: SKScene {
 
     private var headerHeight: CGFloat = 130
     private var footerHeight: CGFloat = 100
+    private var helpOverlay: SKNode?
 
     // MARK: - Scene Lifecycle
 
@@ -66,11 +67,14 @@ class SpellSelectionScene: SKScene {
     // MARK: - Setup
 
     private func setupUI() {
-        let safeTop = view?.safeAreaInsets.top ?? 0
-        let safeBottom = view?.safeAreaInsets.bottom ?? 0
+        // Use safe area insets, with fallback for Dynamic Island/notch iPhones when not yet available
+        let rawSafeTop = view?.safeAreaInsets.top ?? 0
+        let safeTop = rawSafeTop > 0 ? rawSafeTop : 59  // 59 is typical for Dynamic Island
+        let rawSafeBottom = view?.safeAreaInsets.bottom ?? 0
+        let safeBottom = rawSafeBottom > 0 ? rawSafeBottom : 34  // 34 is typical home indicator
 
         // Title
-        let titleLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        let titleLabel = SKLabelNode(fontNamed: "Cochin-Bold")
         titleLabel.text = "Choose Your Spells"
         titleLabel.fontSize = 24
         titleLabel.fontColor = .white
@@ -79,7 +83,7 @@ class SpellSelectionScene: SKScene {
         addChild(titleLabel)
 
         // Subtitle
-        let subtitleLabel = SKLabelNode(fontNamed: "Helvetica")
+        let subtitleLabel = SKLabelNode(fontNamed: "Cochin")
         subtitleLabel.text = "Select up to 3 spells (Pass is always available)"
         subtitleLabel.fontSize = 14
         subtitleLabel.fontColor = SKColor(white: 0.7, alpha: 1.0)
@@ -88,7 +92,7 @@ class SpellSelectionScene: SKScene {
         addChild(subtitleLabel)
 
         // Mana counter
-        manaLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        manaLabel = SKLabelNode(fontNamed: "Cochin-Bold")
         manaLabel.fontSize = 18
         manaLabel.fontColor = SKColor(red: 0.3, green: 0.5, blue: 1.0, alpha: 1.0)
         manaLabel.horizontalAlignmentMode = .left
@@ -98,14 +102,35 @@ class SpellSelectionScene: SKScene {
         addChild(manaLabel)
 
         // Selected count
-        selectedLabel = SKLabelNode(fontNamed: "Helvetica")
+        selectedLabel = SKLabelNode(fontNamed: "Cochin")
         selectedLabel.fontSize = 14
         selectedLabel.fontColor = SKColor(white: 0.7, alpha: 1.0)
         selectedLabel.horizontalAlignmentMode = .right
-        selectedLabel.position = CGPoint(x: size.width - 20, y: size.height - safeTop - 85)
+        selectedLabel.position = CGPoint(x: size.width - 70, y: size.height - safeTop - 85)
         selectedLabel.zPosition = 100
         updateSelectedLabel()
         addChild(selectedLabel)
+
+        // Help button (top right)
+        let helpButton = SKShapeNode(circleOfRadius: 18)
+        helpButton.fillColor = SKColor(white: 0.2, alpha: 0.9)
+        helpButton.strokeColor = SKColor(white: 0.5, alpha: 1.0)
+        helpButton.lineWidth = 2
+        helpButton.position = CGPoint(x: size.width - 30, y: size.height - safeTop - 50)
+        helpButton.zPosition = 100
+        helpButton.name = "helpButton"
+        addChild(helpButton)
+
+        let helpLabel = SKLabelNode(fontNamed: "Cochin-Bold")
+        helpLabel.text = "?"
+        helpLabel.fontSize = 20
+        helpLabel.fontColor = .white
+        helpLabel.verticalAlignmentMode = .center
+        helpLabel.horizontalAlignmentMode = .center
+        helpLabel.position = helpButton.position
+        helpLabel.zPosition = 101
+        helpLabel.name = "helpButton"
+        addChild(helpLabel)
 
         headerHeight = safeTop + 100
 
@@ -122,7 +147,7 @@ class SpellSelectionScene: SKScene {
         startButton.zPosition = 100
         addChild(startButton)
 
-        startButtonLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        startButtonLabel = SKLabelNode(fontNamed: "Cochin-Bold")
         startButtonLabel.text = "Start Adventure"
         startButtonLabel.fontSize = 18
         startButtonLabel.fontColor = .white
@@ -211,7 +236,8 @@ class SpellSelectionScene: SKScene {
     }
 
     private func updateSelectedLabel() {
-        selectedLabel.text = "\(loadout.spells.count) spells selected"
+        let count = loadout.spells.count
+        selectedLabel.text = "\(count) \(count == 1 ? "spell" : "spells") selected"
     }
 
     private func updateStartButton() {
@@ -259,6 +285,19 @@ class SpellSelectionScene: SKScene {
         }
 
         let location = touch.location(in: self)
+
+        // Check if help overlay is showing - any tap dismisses it
+        if helpOverlay != nil {
+            hideHelp()
+            return
+        }
+
+        // Check help button
+        let helpBounds = CGRect(x: size.width - 50, y: size.height - (view?.safeAreaInsets.top ?? 0) - 70, width: 40, height: 40)
+        if helpBounds.contains(location) {
+            showHelp()
+            return
+        }
 
         // Check start button (simple bounds check)
         let buttonBounds = CGRect(
@@ -348,6 +387,98 @@ class SpellSelectionScene: SKScene {
         let transition = SKTransition.fade(withDuration: 0.5)
         view?.presentScene(gameScene, transition: transition)
     }
+
+    // MARK: - Help Overlay
+
+    private func showHelp() {
+        guard helpOverlay == nil else { return }
+
+        let overlay = SKNode()
+        overlay.zPosition = 500
+
+        // Dimmed background
+        let dimmer = SKShapeNode(rectOf: CGSize(width: size.width, height: size.height))
+        dimmer.fillColor = SKColor(white: 0, alpha: 0.85)
+        dimmer.strokeColor = .clear
+        dimmer.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        overlay.addChild(dimmer)
+
+        // Help panel
+        let panelWidth = min(size.width - 40, 350)
+        let panelHeight = min(size.height - 100, 500)
+        let panel = SKShapeNode(rectOf: CGSize(width: panelWidth, height: panelHeight), cornerRadius: 16)
+        panel.fillColor = SKColor(white: 0.15, alpha: 1.0)
+        panel.strokeColor = SKColor(white: 0.4, alpha: 1.0)
+        panel.lineWidth = 2
+        panel.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        overlay.addChild(panel)
+
+        // Title
+        let title = SKLabelNode(fontNamed: "Cochin-Bold")
+        title.text = "How to Play"
+        title.fontSize = 22
+        title.fontColor = .white
+        title.position = CGPoint(x: size.width / 2, y: size.height / 2 + panelHeight / 2 - 35)
+        overlay.addChild(title)
+
+        // Instructions text
+        let instructions = """
+        SELECT SPELLS
+        Choose up to 3 spells. Pass is always
+        available and restores all your mana.
+
+        MOVEMENT
+        Tap a hex to walk there. You can only
+        move to adjacent hexes each step.
+
+        CASTING SPELLS
+        Tap a spell, then tap a target hex.
+        Range 0 spells cast on yourself.
+
+        COMBAT
+        Defeat enemies by casting offensive
+        spells at them. Red = damage dealers.
+
+        SURVIVAL
+        Green spells heal. Keep your HP up!
+        Hearts show health, crystals show mana.
+
+        CHALLENGES
+        Complete objectives shown at the top.
+        Each challenge tests different skills.
+
+        Tap anywhere to close
+        """
+
+        let helpText = SKLabelNode(fontNamed: "Cochin")
+        helpText.text = instructions
+        helpText.fontSize = 13
+        helpText.fontColor = SKColor(white: 0.9, alpha: 1.0)
+        helpText.numberOfLines = 0
+        helpText.preferredMaxLayoutWidth = panelWidth - 30
+        helpText.lineBreakMode = .byWordWrapping
+        helpText.verticalAlignmentMode = .top
+        helpText.horizontalAlignmentMode = .center
+        helpText.position = CGPoint(x: size.width / 2, y: size.height / 2 + panelHeight / 2 - 60)
+        overlay.addChild(helpText)
+
+        addChild(overlay)
+        helpOverlay = overlay
+
+        // Fade in
+        overlay.alpha = 0
+        overlay.run(SKAction.fadeIn(withDuration: 0.2))
+    }
+
+    private func hideHelp() {
+        guard let overlay = helpOverlay else { return }
+
+        overlay.run(SKAction.sequence([
+            SKAction.fadeOut(withDuration: 0.15),
+            SKAction.removeFromParent()
+        ]))
+        helpOverlay = nil
+    }
 }
 
 // MARK: - Spell Card
@@ -358,9 +489,10 @@ class SpellCard: SKNode {
 
     private let background: SKShapeNode
     private let nameLabel: SKLabelNode
+    private let descLabel: SKLabelNode
     private let costLabel: SKLabelNode
     private let selectionOverlay: SKShapeNode
-    private let typeIndicator: SKShapeNode
+    private let statsLabel: SKLabelNode
 
     private var isSelected: Bool = false
     private var isAffordable: Bool = true
@@ -376,35 +508,63 @@ class SpellCard: SKNode {
         background.strokeColor = SpellCard.cardBorderColor(for: spell)
         background.lineWidth = 2
 
-        // Spell name
-        nameLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        nameLabel.fontSize = min(14, size.width / 10)
+        // Spell name at top
+        nameLabel = SKLabelNode(fontNamed: "Cochin-Bold")
+        nameLabel.fontSize = min(13, size.width / 11)
         nameLabel.fontColor = .white
-        nameLabel.verticalAlignmentMode = .center
+        nameLabel.verticalAlignmentMode = .top
         nameLabel.horizontalAlignmentMode = .center
-        nameLabel.position = CGPoint(x: 0, y: size.height / 4)
+        nameLabel.position = CGPoint(x: 0, y: size.height / 2 - 8)
+        nameLabel.text = spell.name
 
-        // Truncate long names
-        let maxChars = Int(size.width / 8)
-        if spell.name.count > maxChars {
-            nameLabel.text = String(spell.name.prefix(maxChars - 2)) + "..."
-        } else {
-            nameLabel.text = spell.name
+        // Spell description in middle (with word wrapping)
+        // Use larger font but cap based on available space
+        let descFontSize = min(12, size.width / 12, size.height / 18)
+        descLabel = SKLabelNode(fontNamed: "Cochin")
+        descLabel.fontSize = descFontSize
+        descLabel.fontColor = SKColor(white: 0.8, alpha: 1.0)
+        descLabel.numberOfLines = 0
+        descLabel.preferredMaxLayoutWidth = size.width - 14
+        descLabel.lineBreakMode = .byWordWrapping
+        descLabel.verticalAlignmentMode = .top
+        descLabel.horizontalAlignmentMode = .center
+        descLabel.position = CGPoint(x: 0, y: size.height / 2 - 26)
+        descLabel.text = spell.description
+
+        // Stats line (range, damage/healing)
+        let statsFontSize = min(11, size.width / 13, size.height / 20)
+        statsLabel = SKLabelNode(fontNamed: "Cochin")
+        statsLabel.fontSize = statsFontSize
+        statsLabel.fontColor = SpellCard.cardBorderColor(for: spell)
+        statsLabel.verticalAlignmentMode = .center
+        statsLabel.horizontalAlignmentMode = .center
+        statsLabel.position = CGPoint(x: 0, y: -size.height / 2 + 32)
+
+        var statsText = "Range: \(spell.range)"
+        if spell.offenseDie > 0 {
+            statsText += " | Dmg: d\(spell.offenseDie)"
         }
+        if spell.defenseDie > 0 {
+            statsText += " | Heal: d\(spell.defenseDie)"
+        }
+        if spell.isAoE {
+            statsText += " | AoE"
+        }
+        statsLabel.text = statsText
 
-        // Mana cost (prominent at bottom)
-        costLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
-        costLabel.text = "\(spell.manaCost)"
-        costLabel.fontSize = min(24, size.width / 5)
-        costLabel.fontColor = SKColor(red: 0.3, green: 0.6, blue: 1.0, alpha: 1.0)
+        // Mana cost at bottom - green for restorers, red for spenders
+        costLabel = SKLabelNode(fontNamed: "Cochin-Bold")
+        costLabel.text = spell.manaCost < 0 ? "+\(abs(spell.manaCost))" : "\(spell.manaCost)"
+        costLabel.fontSize = min(18, size.width / 7)
+        if spell.manaCost < 0 {
+            costLabel.fontColor = SKColor(red: 0.3, green: 0.8, blue: 0.3, alpha: 1.0)  // Green for restorers
+        } else if spell.manaCost > 0 {
+            costLabel.fontColor = SKColor(red: 0.9, green: 0.3, blue: 0.3, alpha: 1.0)  // Red for spenders
+        } else {
+            costLabel.fontColor = SKColor(white: 0.7, alpha: 1.0)  // Gray for free spells
+        }
         costLabel.verticalAlignmentMode = .center
-        costLabel.position = CGPoint(x: 0, y: -size.height / 4)
-
-        // Type indicator (small colored dot)
-        typeIndicator = SKShapeNode(circleOfRadius: 6)
-        typeIndicator.fillColor = SpellCard.cardBorderColor(for: spell)
-        typeIndicator.strokeColor = .clear
-        typeIndicator.position = CGPoint(x: 0, y: 0)
+        costLabel.position = CGPoint(x: 0, y: -size.height / 2 + 14)
 
         // Selection overlay
         selectionOverlay = SKShapeNode(rectOf: CGSize(width: size.width + 4, height: size.height + 4), cornerRadius: 12)
@@ -418,8 +578,9 @@ class SpellCard: SKNode {
         addChild(selectionOverlay)
         addChild(background)
         addChild(nameLabel)
+        addChild(descLabel)
+        addChild(statsLabel)
         addChild(costLabel)
-        addChild(typeIndicator)
     }
 
     required init?(coder aDecoder: NSCoder) {

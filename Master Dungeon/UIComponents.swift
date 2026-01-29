@@ -319,20 +319,28 @@ class SpellSlot: SKNode {
         background.lineWidth = 2
 
         // Spell icon (using first letter for now)
-        iconLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        iconLabel = SKLabelNode(fontNamed: "Cochin-Bold")
         iconLabel.fontSize = size * 0.4
         iconLabel.fontColor = SpellSlot.spellColor(for: spell)
         iconLabel.verticalAlignmentMode = .center
         iconLabel.text = String(spell.name.prefix(2))
 
-        // Mana cost
-        costLabel = SKLabelNode(fontNamed: "Helvetica-Bold")
+        // Mana cost - green for restorers, red for spenders
+        costLabel = SKLabelNode(fontNamed: "Cochin-Bold")
         costLabel.fontSize = 12
-        costLabel.fontColor = SKColor(red: 0.3, green: 0.5, blue: 1.0, alpha: 1.0)
+        if spell.manaCost < 0 {
+            costLabel.fontColor = SKColor(red: 0.3, green: 0.8, blue: 0.3, alpha: 1.0)  // Green for restorers
+            costLabel.text = "+\(abs(spell.manaCost))"
+        } else if spell.manaCost > 0 {
+            costLabel.fontColor = SKColor(red: 0.9, green: 0.3, blue: 0.3, alpha: 1.0)  // Red for spenders
+            costLabel.text = "\(spell.manaCost)"
+        } else {
+            costLabel.fontColor = SKColor(white: 0.7, alpha: 1.0)  // Gray for free spells
+            costLabel.text = "0"
+        }
         costLabel.verticalAlignmentMode = .top
         costLabel.horizontalAlignmentMode = .right
         costLabel.position = CGPoint(x: size / 2 - 4, y: size / 2 - 4)
-        costLabel.text = "\(spell.manaCost)"
 
         // Selection border
         selectionBorder = SKShapeNode(rectOf: CGSize(width: size + 4, height: size + 4), cornerRadius: 10)
