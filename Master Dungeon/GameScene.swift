@@ -512,7 +512,7 @@ class GameScene: SKScene {
         guard let sprite = enemySprites[enemy.id] else { return }
         // Update HP label in sprite (sprite is already an SKNode container)
         if let hpLabel = sprite.children.compactMap({ $0 as? SKLabelNode }).first {
-            hpLabel.text = "\(hp)"
+            hpLabel.text = enemy.isMerged ? "+\(hp)" : "\(hp)"
         }
     }
 
@@ -617,6 +617,36 @@ class GameScene: SKScene {
         hpLabel.fontColor = .white
         hpLabel.verticalAlignmentMode = .center
         hpLabel.position = CGPoint(x: 0, y: -2)
+        container.addChild(hpLabel)
+
+        return container
+    }
+
+    private func createMergedEnemySprite(hp: Int, behavior: EnemyBehavior) -> SKNode {
+        let container = SKNode()
+
+        let size = hexSize * 0.45  // Larger than normal
+        let path = CGMutablePath()
+        path.move(to: CGPoint(x: 0, y: size))
+        path.addLine(to: CGPoint(x: -size * 0.866, y: -size * 0.5))
+        path.addLine(to: CGPoint(x: size * 0.866, y: -size * 0.5))
+        path.closeSubpath()
+
+        let body = SKShapeNode(path: path)
+        body.fillColor = behavior == .boss
+            ? SKColor(red: 0.5, green: 0.1, blue: 0.5, alpha: 1.0)
+            : SKColor(red: 0.7, green: 0.2, blue: 0.7, alpha: 1.0)
+        body.strokeColor = SKColor(red: 0.4, green: 0.1, blue: 0.4, alpha: 1.0)
+        body.lineWidth = 3
+        container.addChild(body)
+
+        let hpLabel = SKLabelNode(fontNamed: "Cochin-Bold")
+        hpLabel.text = "+\(hp)"
+        hpLabel.fontSize = 12
+        hpLabel.fontColor = .white
+        hpLabel.verticalAlignmentMode = .center
+        hpLabel.position = CGPoint(x: 0, y: -2)
+        hpLabel.name = "hpLabel"
         container.addChild(hpLabel)
 
         return container
@@ -1486,6 +1516,63 @@ class GameScene: SKScene {
             case .wait:
                 break
             }
+        }
+
+        checkAndMergeEnemies()
+    }
+
+    private func checkAndMergeEnemies() {
+        var enemiesByPosition: [HexCoord: [Enemy]] = [:]
+        for enemy in activeEnemies where enemy.isAlive {
+            enemiesByPosition[enemy.position, default: []].append(enemy)
+        }
+
+        for (position, enemies) in enemiesByPosition where enemies.count >= 2 {
+            performMerge(enemies: enemies, at: position)
+        }
+    }
+
+    private func performMerge(enemies: [Enemy], at position: HexCoord) {
+        guard let mergedEnemy = Enemy.merge(enemies, at: position) else { return }
+
+        // Remove old enemies
+        for enemy in enemies {
+            if let sprite = enemySprites[enemy.id] {
+                sprite.removeFromParent()
+            }
+            enemySprites.removeValue(forKey: enemy.id)
+            activeEnemies.removeAll { $0.id == enemy.id }
+            entities.removeAll { ($0 as? Enemy)?.id == enemy.id }
+        }
+
+        // Spawn merged enemy
+        spawnMergedEnemy(mergedEnemy)
+    }
+
+    private func spawnMergedEnemy(_ enemy: Enemy) {
+        activeEnemies.append(enemy)
+        entities.append(enemy)
+
+        let sprite = createMergedEnemySprite(hp: enemy.hp, behavior: enemy.behavior)
+        let localCoord = enemy.position - player.position
+        sprite.position = hexLayout.hexToScreen(localCoord)
+        sprite.zPosition = 4
+        entityLayer.addChild(sprite)
+        enemySprites[enemy.id] = sprite
+        enemy.sprite = sprite
+
+        // Setup callbacks
+        enemy.onPositionChanged = { [weak self, weak enemy] _ in
+            guard let enemy = enemy else { return }
+            self?.updateEnemyPosition(enemy)
+        }
+        enemy.onHPChanged = { [weak self, weak enemy] newHP in
+            guard let enemy = enemy else { return }
+            self?.updateEnemyHP(enemy, hp: newHP)
+        }
+        enemy.onDeath = { [weak self, weak enemy] in
+            guard let enemy = enemy else { return }
+            self?.handleEnemyDeath(enemy)
         }
     }
 

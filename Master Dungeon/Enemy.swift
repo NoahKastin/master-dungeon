@@ -12,13 +12,17 @@ class Enemy: GKEntity {
     // MARK: - Properties
     let id = UUID()
     private(set) var hp: Int
-    let maxHP: Int
+    private(set) var maxHP: Int
     let damage: Int
     let behavior: EnemyBehavior
     private(set) var position: HexCoord
 
     // Visual
     weak var sprite: SKNode?
+
+    // Merge State
+    private(set) var isMerged: Bool = false
+    private(set) var mergeCount: Int = 1
 
     // AI State
     private(set) var isStunned: Bool = false
@@ -37,6 +41,17 @@ class Enemy: GKEntity {
         self.damage = damage
         self.behavior = behavior
         self.position = position
+        super.init()
+    }
+
+    init(hp: Int, maxHP: Int, damage: Int, behavior: EnemyBehavior, position: HexCoord, isMerged: Bool, mergeCount: Int) {
+        self.hp = hp
+        self.maxHP = maxHP
+        self.damage = damage
+        self.behavior = behavior
+        self.position = position
+        self.isMerged = isMerged
+        self.mergeCount = mergeCount
         super.init()
     }
 
@@ -232,6 +247,39 @@ class Enemy: GKEntity {
     func teleportTo(_ coord: HexCoord) {
         position = coord
         onPositionChanged?(position)
+    }
+
+    // MARK: - Merge Support
+
+    static func behaviorPriority(_ behavior: EnemyBehavior) -> Int {
+        switch behavior {
+        case .boss: return 5
+        case .aggressive: return 4
+        case .ranged: return 3
+        case .swarm: return 2
+        case .defensive: return 1
+        }
+    }
+
+    static func merge(_ enemies: [Enemy], at position: HexCoord) -> Enemy? {
+        guard enemies.count >= 2 else { return nil }
+
+        let totalHP = enemies.reduce(0) { $0 + $1.hp }
+        let totalMaxHP = enemies.reduce(0) { $0 + $1.maxHP }
+        let maxDamage = enemies.map { $0.damage }.max() ?? 1
+        let dominantBehavior = enemies
+            .map { $0.behavior }
+            .max { behaviorPriority($0) < behaviorPriority($1) } ?? .aggressive
+
+        return Enemy(
+            hp: totalHP,
+            maxHP: totalMaxHP,
+            damage: maxDamage,
+            behavior: dominantBehavior,
+            position: position,
+            isMerged: true,
+            mergeCount: enemies.reduce(0) { $0 + $1.mergeCount }
+        )
     }
 }
 
