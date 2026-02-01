@@ -19,7 +19,9 @@ struct SpellData {
     )
 
     static let allSpells: [Spell] = [
+        // Mana -4
         passSpell,
+        // Mana -2
         Spell(
             id: "stealth", name: "Stealth",
             description: "Radiate a veil of shadows and silence, masking you and allies in adjacent hexes from detection.",
@@ -28,6 +30,7 @@ struct SpellData {
             hasAdvantage: false, causesParalysis: true, affectsMovement: false,
             affectsObjects: false, producesLight: false, exchangesKnowledge: false
         ),
+        // Mana 0
         Spell(
             id: "entangle", name: "Entangle",
             description: "Cause grasping weeds and vines to ensnare nearby hexes.",
@@ -52,12 +55,29 @@ struct SpellData {
             hasAdvantage: false, causesParalysis: false, affectsMovement: false,
             affectsObjects: false, producesLight: false, exchangesKnowledge: false
         ),
+        // Mana 1
+        Spell(
+            id: "brand", name: "Brand",
+            description: "Assail a hex with a weapon gleaming with astral radiance, causing the hex to shed light.",
+            range: 1, offenseDie: 2, defenseDie: 0, manaCost: 1,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
+            hasAdvantage: false, causesParalysis: false, affectsMovement: false,
+            affectsObjects: false, producesLight: true, exchangesKnowledge: false
+        ),
         Spell(
             id: "poison-puff", name: "Poison Puff",
             description: "Puff noxious gas at a hex.",
             range: 1, offenseDie: 4, defenseDie: 0, manaCost: 1,
             isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
             hasAdvantage: false, causesParalysis: false, affectsMovement: false,
+            affectsObjects: false, producesLight: false, exchangesKnowledge: false
+        ),
+        Spell(
+            id: "shocking-grasp", name: "Shocking Grasp",
+            description: "Electrically shock a hex.",
+            range: 1, offenseDie: 2, defenseDie: 0, manaCost: 1,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
+            hasAdvantage: false, causesParalysis: true, affectsMovement: false,
             affectsObjects: false, producesLight: false, exchangesKnowledge: false
         ),
         Spell(
@@ -68,6 +88,7 @@ struct SpellData {
             hasAdvantage: false, causesParalysis: false, affectsMovement: false,
             affectsObjects: false, producesLight: false, exchangesKnowledge: false
         ),
+        // Mana 2
         Spell(
             id: "cure-wounds", name: "Cure Wounds",
             description: "Touch an ally's wounds, causing them to knit together.",
@@ -77,18 +98,27 @@ struct SpellData {
             affectsObjects: false, producesLight: false, exchangesKnowledge: false
         ),
         Spell(
-            id: "shocking-grasp", name: "Shocking Grasp",
-            description: "Electrically shock a hex.",
-            range: 1, offenseDie: 3, defenseDie: 0, manaCost: 2,
+            id: "magic-missile", name: "Magic Missile",
+            description: "Assail a creature with a glowing dart of magical force.",
+            range: 3, offenseDie: 1, defenseDie: 0, manaCost: 2,
             isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
-            hasAdvantage: false, causesParalysis: true, affectsMovement: false,
+            hasAdvantage: false, causesParalysis: false, affectsMovement: false,
+            affectsObjects: false, producesLight: false, exchangesKnowledge: false
+        ),
+        // Mana 3
+        Spell(
+            id: "acid-splash", name: "Acid Splash",
+            description: "Hurl a bubble of acid at a group of hexes.",
+            range: 2, offenseDie: 2, defenseDie: 0, manaCost: 3,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
+            hasAdvantage: false, causesParalysis: false, affectsMovement: false,
             affectsObjects: false, producesLight: false, exchangesKnowledge: false
         ),
         Spell(
-            id: "magic-missile", name: "Magic Missile",
-            description: "Assail a creature with a glowing dart of magical force.",
-            range: 3, offenseDie: 2, defenseDie: 0, manaCost: 3,
-            isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
+            id: "burning-hands", name: "Burning Hands",
+            description: "Fling a thin sheet of flames, damaging hexes in a cone.",
+            range: 1, offenseDie: 4, defenseDie: 0, manaCost: 3,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
             hasAdvantage: false, causesParalysis: false, affectsMovement: false,
             affectsObjects: false, producesLight: false, exchangesKnowledge: false
         ),
@@ -100,30 +130,7 @@ struct SpellData {
             hasAdvantage: false, causesParalysis: false, affectsMovement: false,
             affectsObjects: false, producesLight: false, exchangesKnowledge: false
         ),
-        Spell(
-            id: "brand", name: "Brand",
-            description: "Assail a hex with a weapon gleaming with astral radiance, causing the hex to shed light.",
-            range: 1, offenseDie: 4, defenseDie: 0, manaCost: 3,
-            isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
-            hasAdvantage: false, causesParalysis: false, affectsMovement: false,
-            affectsObjects: false, producesLight: true, exchangesKnowledge: false
-        ),
-        Spell(
-            id: "burning-hands", name: "Burning Hands",
-            description: "Fling a thin sheet of flames, damaging hexes in a cone.",
-            range: 1, offenseDie: 4, defenseDie: 0, manaCost: 3,
-            isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
-            hasAdvantage: false, causesParalysis: false, affectsMovement: false,
-            affectsObjects: false, producesLight: false, exchangesKnowledge: false
-        ),
-        Spell(
-            id: "acid-splash", name: "Acid Splash",
-            description: "Hurl a bubble of acid at a group of hexes.",
-            range: 2, offenseDie: 3, defenseDie: 0, manaCost: 4,
-            isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
-            hasAdvantage: false, causesParalysis: false, affectsMovement: false,
-            affectsObjects: false, producesLight: false, exchangesKnowledge: false
-        ),
+        // Mana 4
         Spell(
             id: "chill-touch", name: "Chill Touch",
             description: "Grip a hex with a ghostly, skeletal hand.",
@@ -133,19 +140,19 @@ struct SpellData {
             affectsObjects: false, producesLight: false, exchangesKnowledge: false
         ),
         Spell(
-            id: "sleet-storm", name: "Sleet Storm",
-            description: "Summon a snowstorm, paralyzing and damaging hexes within.",
-            range: 2, offenseDie: 1, defenseDie: 0, manaCost: 4,
-            isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
-            hasAdvantage: false, causesParalysis: true, affectsMovement: false,
-            affectsObjects: false, producesLight: false, exchangesKnowledge: false
-        ),
-        Spell(
             id: "mass-cure", name: "Mass Cure",
             description: "Call out words of restoration, healing allies within range.",
             range: 1, offenseDie: 0, defenseDie: 2, manaCost: 4,
             isQuickCast: true, isPassive: false, noSave: true, isAoE: true,
             hasAdvantage: false, causesParalysis: false, affectsMovement: false,
+            affectsObjects: false, producesLight: false, exchangesKnowledge: false
+        ),
+        Spell(
+            id: "sleet-storm", name: "Sleet Storm",
+            description: "Summon a snowstorm, paralyzing and damaging hexes within.",
+            range: 2, offenseDie: 1, defenseDie: 0, manaCost: 4,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
+            hasAdvantage: false, causesParalysis: true, affectsMovement: false,
             affectsObjects: false, producesLight: false, exchangesKnowledge: false
         ),
     ]
