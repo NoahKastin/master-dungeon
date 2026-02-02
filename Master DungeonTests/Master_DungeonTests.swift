@@ -110,7 +110,7 @@ struct PathfindingTests {
 @MainActor
 struct SpellTests {
     @Test func spellDataLoaded() {
-        #expect(SpellData.allSpells.count == 17)  // Updated spell count
+        #expect(SpellData.allSpells.count == 14)
     }
 
     @Test func spellLookupById() {
@@ -118,7 +118,7 @@ struct SpellTests {
 
         #expect(spell != nil)
         #expect(spell?.name == "Magic Missile")
-        #expect(spell?.manaCost == 3)
+        #expect(spell?.manaCost == 2)
         #expect(spell?.range == 3)
     }
 

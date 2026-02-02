@@ -51,8 +51,6 @@ struct ChallengeElement {
         case target(required: Bool)  // Something to interact with
         case npc(needsHealing: Bool, needsRescue: Bool)
         case trigger(activates: String)  // Triggers another element
-        case water(depth: Int)
-        case pit(depth: Int)
         case invisibleEnemy(hp: Int, damage: Int)
     }
 }
@@ -361,10 +359,10 @@ class ChallengeGenerator {
             ]
         } else {
             descriptions = [
-                "A treacherous gap lies ahead. Find a way across!",
-                "The path crumbles into a pit. You must leap!",
-                "Water floods the way forward.",
-                "A chasm separates you from safety."
+                "Barriers block your path. Find a way through!",
+                "Obstacles stand between you and your goal.",
+                "Navigate the hazards ahead.",
+                "Clear the path to safety."
             ]
         }
 
@@ -677,7 +675,7 @@ class ChallengeGenerator {
                     ))
                 } else {
                     elements.append(ChallengeElement(
-                        type: .pit(depth: 3),
+                        type: .obstacle(blocking: true, destructible: false),
                         position: pos,
                         properties: [:]
                     ))
@@ -695,18 +693,16 @@ class ChallengeGenerator {
                         position: pos,
                         properties: ["hp": 2]
                     ))
-                } else if randomSource.nextBool() {
-                    elements.append(ChallengeElement(
-                        type: .pit(depth: 3),
-                        position: pos,
-                        properties: [:]
-                    ))
                 } else {
-                    elements.append(ChallengeElement(
-                        type: .water(depth: 2),
-                        position: pos,
-                        properties: [:]
-                    ))
+                    // Leave gap for player to navigate through
+                    // Only add obstacle 50% of the time to create paths
+                    if randomSource.nextBool() {
+                        elements.append(ChallengeElement(
+                            type: .obstacle(blocking: true, destructible: false),
+                            position: pos,
+                            properties: [:]
+                        ))
+                    }
                 }
             }
 

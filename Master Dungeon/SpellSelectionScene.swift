@@ -493,6 +493,7 @@ class SpellCard: SKNode {
     private let costLabel: SKLabelNode
     private let selectionOverlay: SKShapeNode
     private let statsLabel: SKLabelNode
+    private let iconNode: SKNode
 
     private var isSelected: Bool = false
     private var isAffordable: Bool = true
@@ -502,6 +503,9 @@ class SpellCard: SKNode {
         self.spell = spell
         self.cardSize = size
 
+        // Scale factor based on card width (base reference: 150pt card)
+        let scale = size.width / 150.0
+
         // Background
         background = SKShapeNode(rectOf: size, cornerRadius: 10)
         background.fillColor = SKColor(white: 0.12, alpha: 1.0)
@@ -510,35 +514,34 @@ class SpellCard: SKNode {
 
         // Spell name at top
         nameLabel = SKLabelNode(fontNamed: "Cochin-Bold")
-        nameLabel.fontSize = min(13, size.width / 11)
+        nameLabel.fontSize = 12 * scale
         nameLabel.fontColor = .white
         nameLabel.verticalAlignmentMode = .top
         nameLabel.horizontalAlignmentMode = .center
-        nameLabel.position = CGPoint(x: 0, y: size.height / 2 - 8)
+        nameLabel.position = CGPoint(x: 0, y: size.height / 2 - 8 * scale)
         nameLabel.text = spell.name
 
-        // Spell description in middle (with word wrapping)
-        // Use larger font but cap based on available space
-        let descFontSize = min(12, size.width / 12, size.height / 18)
+        // Spell description below name (single line for performance)
         descLabel = SKLabelNode(fontNamed: "Cochin")
-        descLabel.fontSize = descFontSize
+        descLabel.fontSize = 9 * scale
         descLabel.fontColor = SKColor(white: 0.8, alpha: 1.0)
-        descLabel.numberOfLines = 0
-        descLabel.preferredMaxLayoutWidth = size.width - 14
-        descLabel.lineBreakMode = .byWordWrapping
         descLabel.verticalAlignmentMode = .top
         descLabel.horizontalAlignmentMode = .center
-        descLabel.position = CGPoint(x: 0, y: size.height / 2 - 26)
+        descLabel.position = CGPoint(x: 0, y: size.height / 2 - 24 * scale)
         descLabel.text = spell.description
 
+        // Spell icon in center
+        let iconColor = SpellCard.cardBorderColor(for: spell)
+        iconNode = SpellIcons.createIcon(for: spell.id, size: 40 * scale, color: iconColor)
+        iconNode.position = CGPoint(x: 0, y: 0)
+
         // Stats line (range, damage/healing)
-        let statsFontSize = min(11, size.width / 13, size.height / 20)
         statsLabel = SKLabelNode(fontNamed: "Cochin")
-        statsLabel.fontSize = statsFontSize
+        statsLabel.fontSize = 9 * scale
         statsLabel.fontColor = SpellCard.cardBorderColor(for: spell)
         statsLabel.verticalAlignmentMode = .center
         statsLabel.horizontalAlignmentMode = .center
-        statsLabel.position = CGPoint(x: 0, y: -size.height / 2 + 32)
+        statsLabel.position = CGPoint(x: 0, y: -size.height / 2 + 28 * scale)
 
         var statsText = "Range: \(spell.range)"
         if spell.offenseDie > 0 {
@@ -555,7 +558,7 @@ class SpellCard: SKNode {
         // Mana cost at bottom - green for restorers, red for spenders
         costLabel = SKLabelNode(fontNamed: "Cochin-Bold")
         costLabel.text = spell.manaCost < 0 ? "+\(abs(spell.manaCost))" : "\(spell.manaCost)"
-        costLabel.fontSize = min(18, size.width / 7)
+        costLabel.fontSize = 16 * scale
         if spell.manaCost < 0 {
             costLabel.fontColor = SKColor(red: 0.3, green: 0.8, blue: 0.3, alpha: 1.0)  // Green for restorers
         } else if spell.manaCost > 0 {
@@ -564,7 +567,7 @@ class SpellCard: SKNode {
             costLabel.fontColor = SKColor(white: 0.7, alpha: 1.0)  // Gray for free spells
         }
         costLabel.verticalAlignmentMode = .center
-        costLabel.position = CGPoint(x: 0, y: -size.height / 2 + 14)
+        costLabel.position = CGPoint(x: 0, y: -size.height / 2 + 12 * scale)
 
         // Selection overlay
         selectionOverlay = SKShapeNode(rectOf: CGSize(width: size.width + 4, height: size.height + 4), cornerRadius: 12)
@@ -579,6 +582,7 @@ class SpellCard: SKNode {
         addChild(background)
         addChild(nameLabel)
         addChild(descLabel)
+        addChild(iconNode)
         addChild(statsLabel)
         addChild(costLabel)
     }

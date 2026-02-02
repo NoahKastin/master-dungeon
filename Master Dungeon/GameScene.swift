@@ -198,17 +198,14 @@ class GameScene: SKScene {
         // If no loadout selected (direct scene launch for testing), use defaults
         if loadout.spells.isEmpty {
             var testLoadout = SpellLoadout()
-            if let mistyStep = SpellData.spell(byId: "misty-step") {
-                _ = testLoadout.addSpell(mistyStep)
-            }
-            if let eldritchBlast = SpellData.spell(byId: "eldritch-blast") {
-                _ = testLoadout.addSpell(eldritchBlast)
+            if let magicMissile = SpellData.spell(byId: "magic-missile") {
+                _ = testLoadout.addSpell(magicMissile)
             }
             if let cureWounds = SpellData.spell(byId: "cure-wounds") {
                 _ = testLoadout.addSpell(cureWounds)
             }
-            if let fireball = SpellData.spell(byId: "fireball") {
-                _ = testLoadout.addSpell(fireball)
+            if let burningHands = SpellData.spell(byId: "burning-hands") {
+                _ = testLoadout.addSpell(burningHands)
             }
             player.setLoadout(testLoadout)
         } else {
@@ -571,12 +568,6 @@ class GameScene: SKScene {
 
         case .trigger:
             sprite = createTriggerSprite()
-
-        case .water:
-            sprite = createWaterSprite()
-
-        case .pit:
-            sprite = createPitSprite()
         }
 
         sprite.position = screenPos
@@ -754,32 +745,6 @@ class GameScene: SKScene {
         trigger.strokeColor = SKColor(red: 0.4, green: 0.4, blue: 0.1, alpha: 1.0)
         trigger.lineWidth = 2
         return trigger
-    }
-
-    private func createWaterSprite() -> SKNode {
-        let size = hexSize * 0.8
-        let water = SKShapeNode(circleOfRadius: size)
-        water.fillColor = SKColor(red: 0.2, green: 0.4, blue: 0.7, alpha: 0.6)
-        water.strokeColor = SKColor(red: 0.1, green: 0.3, blue: 0.5, alpha: 0.8)
-        water.lineWidth = 1
-
-        // Shimmer animation
-        let shimmer = SKAction.sequence([
-            SKAction.fadeAlpha(to: 0.4, duration: 1.0),
-            SKAction.fadeAlpha(to: 0.6, duration: 1.0)
-        ])
-        water.run(SKAction.repeatForever(shimmer))
-
-        return water
-    }
-
-    private func createPitSprite() -> SKNode {
-        let size = hexSize * 0.7
-        let pit = SKShapeNode(circleOfRadius: size)
-        pit.fillColor = SKColor(white: 0.02, alpha: 1.0)
-        pit.strokeColor = SKColor(white: 0.15, alpha: 1.0)
-        pit.lineWidth = 3
-        return pit
     }
 
     // MARK: - Touch Handling

@@ -323,22 +323,6 @@ struct SpellIcons {
             path.move(to: CGPoint(x: -s * 0.8, y: -s * 0.8))
             path.addLine(to: CGPoint(x: s * 0.8, y: s * 0.8))
 
-        case "entangle":
-            // Vines/roots spiral
-            path.move(to: CGPoint(x: 0, y: -s))
-            path.addCurve(to: CGPoint(x: 0, y: s), control1: CGPoint(x: s, y: -s * 0.5), control2: CGPoint(x: -s, y: s * 0.5))
-            path.move(to: CGPoint(x: -s * 0.5, y: -s))
-            path.addCurve(to: CGPoint(x: s * 0.5, y: s * 0.5), control1: CGPoint(x: -s * 0.5, y: 0), control2: CGPoint(x: s * 0.5, y: 0))
-
-        case "shed-light":
-            // Sun with rays
-            path.addEllipse(in: CGRect(x: -s * 0.3, y: -s * 0.3, width: s * 0.6, height: s * 0.6))
-            for i in 0..<8 {
-                let angle = CGFloat(i) * .pi / 4
-                path.move(to: CGPoint(x: cos(angle) * s * 0.45, y: sin(angle) * s * 0.45))
-                path.addLine(to: CGPoint(x: cos(angle) * s * 0.8, y: sin(angle) * s * 0.8))
-            }
-
         case "spare-the-dying":
             // Reaching hand (simplified)
             path.move(to: CGPoint(x: -s * 0.3, y: -s))
@@ -368,12 +352,6 @@ struct SpellIcons {
             path.addLine(to: CGPoint(x: s * 0.5, y: s * 0.9))
             path.move(to: CGPoint(x: -s * 0.3, y: s * 0.7))
             path.addLine(to: CGPoint(x: -s * 0.5, y: s * 0.9))
-
-        case "poison-puff":
-            // Cloud/puff
-            path.addEllipse(in: CGRect(x: -s * 0.6, y: -s * 0.3, width: s * 0.5, height: s * 0.5))
-            path.addEllipse(in: CGRect(x: -s * 0.2, y: s * 0.1, width: s * 0.6, height: s * 0.5))
-            path.addEllipse(in: CGRect(x: s * 0.1, y: -s * 0.4, width: s * 0.5, height: s * 0.6))
 
         case "shocking-grasp":
             // Lightning bolt
@@ -481,36 +459,6 @@ struct SpellIcons {
                 path.addLine(to: CGPoint(x: branchStart.x + cos(branchAngle1) * s * 0.2, y: branchStart.y + sin(branchAngle1) * s * 0.2))
                 path.move(to: branchStart)
                 path.addLine(to: CGPoint(x: branchStart.x + cos(branchAngle2) * s * 0.2, y: branchStart.y + sin(branchAngle2) * s * 0.2))
-            }
-
-        case "misty-step":
-            // Footprint with mist swirl
-            path.move(to: CGPoint(x: -s * 0.3, y: -s * 0.8))
-            path.addLine(to: CGPoint(x: -s * 0.3, y: s * 0.2))
-            path.addLine(to: CGPoint(x: s * 0.3, y: s * 0.2))
-            path.addLine(to: CGPoint(x: s * 0.3, y: -s * 0.8))
-            // Mist swirl
-            path.move(to: CGPoint(x: -s * 0.5, y: s * 0.5))
-            path.addCurve(to: CGPoint(x: s * 0.5, y: s * 0.8), control1: CGPoint(x: 0, y: s * 0.3), control2: CGPoint(x: s * 0.3, y: s))
-
-        case "eldritch-blast":
-            // Energy beam / eldritch tentacle
-            path.move(to: CGPoint(x: -s * 0.8, y: 0))
-            path.addCurve(to: CGPoint(x: s * 0.8, y: 0), control1: CGPoint(x: -s * 0.3, y: s * 0.6), control2: CGPoint(x: s * 0.3, y: -s * 0.6))
-            // Energy crackles
-            path.move(to: CGPoint(x: s * 0.4, y: s * 0.1))
-            path.addLine(to: CGPoint(x: s * 0.7, y: s * 0.4))
-            path.move(to: CGPoint(x: s * 0.5, y: -s * 0.2))
-            path.addLine(to: CGPoint(x: s * 0.8, y: -s * 0.5))
-
-        case "fireball":
-            // Explosion / big flame burst
-            path.addEllipse(in: CGRect(x: -s * 0.5, y: -s * 0.5, width: s, height: s))
-            // Explosion rays
-            for i in 0..<8 {
-                let angle = CGFloat(i) * .pi / 4 + .pi / 8
-                path.move(to: CGPoint(x: cos(angle) * s * 0.5, y: sin(angle) * s * 0.5))
-                path.addLine(to: CGPoint(x: cos(angle) * s * 0.9, y: sin(angle) * s * 0.9))
             }
 
         default:

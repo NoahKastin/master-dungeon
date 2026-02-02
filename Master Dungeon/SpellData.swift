@@ -21,56 +21,31 @@ struct SpellData {
     static let allSpells: [Spell] = [
         // Mana -4
         passSpell,
-        // Mana -2
-        Spell(
-            id: "stealth", name: "Stealth",
-            description: "Radiate a veil of shadows and silence, masking you and allies in adjacent hexes from detection.",
-            range: 0, offenseDie: 0, defenseDie: 0, manaCost: -2,
-            isQuickCast: true, isPassive: true, noSave: true, isAoE: true,
-            hasAdvantage: false, causesParalysis: true, affectsMovement: false,
-            affectsObjects: false, producesLight: false, exchangesKnowledge: false
-        ),
         // Mana 0
         Spell(
-            id: "entangle", name: "Entangle",
-            description: "Cause grasping weeds and vines to ensnare nearby hexes.",
-            range: 1, offenseDie: 0, defenseDie: 0, manaCost: 0,
-            isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
-            hasAdvantage: false, causesParalysis: true, affectsMovement: false,
-            affectsObjects: false, producesLight: false, exchangesKnowledge: false
-        ),
-        Spell(
-            id: "shed-light", name: "Shed Light",
-            description: "Cause a hex to shed light.",
-            range: 1, offenseDie: 0, defenseDie: 0, manaCost: 0,
-            isQuickCast: true, isPassive: false, noSave: true, isAoE: true,
-            hasAdvantage: false, causesParalysis: false, affectsMovement: false,
-            affectsObjects: false, producesLight: true, exchangesKnowledge: false
-        ),
-        Spell(
             id: "spare-the-dying", name: "Spare the Dying",
-            description: "Stabilize a dying ally, keeping it alive so it can be healed.",
+            description: "Keep a dying ally from death's door.",
             range: 1, offenseDie: 0, defenseDie: 1, manaCost: 0,
             isQuickCast: true, isPassive: false, noSave: true, isAoE: false,
             hasAdvantage: false, causesParalysis: false, affectsMovement: false,
             affectsObjects: false, producesLight: false, exchangesKnowledge: false
         ),
+        Spell(
+            id: "stealth", name: "Stealth",
+            description: "Disappear from nearby foes' view.",
+            range: 0, offenseDie: 0, defenseDie: 0, manaCost: 0,
+            isQuickCast: true, isPassive: true, noSave: true, isAoE: true,
+            hasAdvantage: false, causesParalysis: true, affectsMovement: false,
+            affectsObjects: false, producesLight: false, exchangesKnowledge: false
+        ),
         // Mana 1
         Spell(
             id: "brand", name: "Brand",
-            description: "Assail a hex with a weapon gleaming with astral radiance, causing the hex to shed light.",
+            description: "Light up a hex with a gleaming strike.",
             range: 1, offenseDie: 2, defenseDie: 0, manaCost: 1,
             isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
             hasAdvantage: false, causesParalysis: false, affectsMovement: false,
             affectsObjects: false, producesLight: true, exchangesKnowledge: false
-        ),
-        Spell(
-            id: "poison-puff", name: "Poison Puff",
-            description: "Puff noxious gas at a hex.",
-            range: 1, offenseDie: 4, defenseDie: 0, manaCost: 1,
-            isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
-            hasAdvantage: false, causesParalysis: false, affectsMovement: false,
-            affectsObjects: false, producesLight: false, exchangesKnowledge: false
         ),
         Spell(
             id: "shocking-grasp", name: "Shocking Grasp",
@@ -80,57 +55,56 @@ struct SpellData {
             hasAdvantage: false, causesParalysis: true, affectsMovement: false,
             affectsObjects: false, producesLight: false, exchangesKnowledge: false
         ),
+        // Mana 2
         Spell(
-            id: "thunderwave", name: "Thunderwave",
-            description: "Sweep a wave of thunderous force outwards from yourself, damaging hexes nearby.",
-            range: 0, offenseDie: 4, defenseDie: 0, manaCost: 1,
+            id: "burning-hands", name: "Burning Hands",
+            description: "Conflagrate nearby hexes.",
+            range: 1, offenseDie: 3, defenseDie: 0, manaCost: 2,
             isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
             hasAdvantage: false, causesParalysis: false, affectsMovement: false,
             affectsObjects: false, producesLight: false, exchangesKnowledge: false
         ),
-        // Mana 2
         Spell(
             id: "cure-wounds", name: "Cure Wounds",
-            description: "Touch an ally's wounds, causing them to knit together.",
+            description: "Knit an ally's wounds together.",
             range: 1, offenseDie: 0, defenseDie: 2, manaCost: 2,
             isQuickCast: true, isPassive: false, noSave: true, isAoE: false,
             hasAdvantage: false, causesParalysis: false, affectsMovement: false,
             affectsObjects: false, producesLight: false, exchangesKnowledge: false
         ),
         Spell(
+            id: "life-transference", name: "Life Transference",
+            description: "Take the life force of an enemy.",
+            range: 1, offenseDie: 1, defenseDie: 1, manaCost: 2,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
+            hasAdvantage: false, causesParalysis: false, affectsMovement: false,
+            affectsObjects: false, producesLight: false, exchangesKnowledge: false
+        ),
+        Spell(
             id: "magic-missile", name: "Magic Missile",
-            description: "Assail a creature with a glowing dart of magical force.",
+            description: "Fling a dart of magical force.",
             range: 3, offenseDie: 1, defenseDie: 0, manaCost: 2,
             isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
             hasAdvantage: false, causesParalysis: false, affectsMovement: false,
             affectsObjects: false, producesLight: false, exchangesKnowledge: false
         ),
-        // Mana 3
         Spell(
-            id: "acid-splash", name: "Acid Splash",
-            description: "Hurl a bubble of acid at a group of hexes.",
-            range: 2, offenseDie: 2, defenseDie: 0, manaCost: 3,
+            id: "thunderwave", name: "Thunderwave",
+            description: "Harm nearby foes with thunder.",
+            range: 0, offenseDie: 3, defenseDie: 0, manaCost: 2,
             isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
-            hasAdvantage: false, causesParalysis: false, affectsMovement: false,
-            affectsObjects: false, producesLight: false, exchangesKnowledge: false
-        ),
-        Spell(
-            id: "burning-hands", name: "Burning Hands",
-            description: "Fling a thin sheet of flames, damaging hexes in a cone.",
-            range: 1, offenseDie: 4, defenseDie: 0, manaCost: 3,
-            isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
-            hasAdvantage: false, causesParalysis: false, affectsMovement: false,
-            affectsObjects: false, producesLight: false, exchangesKnowledge: false
-        ),
-        Spell(
-            id: "life-transference", name: "Life Transference",
-            description: "Wreath your hand in shadows, making it siphon life force from hexes you strike with it, damaging them and healing you.",
-            range: 1, offenseDie: 2, defenseDie: 1, manaCost: 3,
-            isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
             hasAdvantage: false, causesParalysis: false, affectsMovement: false,
             affectsObjects: false, producesLight: false, exchangesKnowledge: false
         ),
         // Mana 4
+        Spell(
+            id: "acid-splash", name: "Acid Splash",
+            description: "Hurl a volatile bubble of acid.",
+            range: 2, offenseDie: 3, defenseDie: 0, manaCost: 4,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
+            hasAdvantage: false, causesParalysis: false, affectsMovement: false,
+            affectsObjects: false, producesLight: false, exchangesKnowledge: false
+        ),
         Spell(
             id: "chill-touch", name: "Chill Touch",
             description: "Grip a hex with a ghostly, skeletal hand.",
@@ -141,7 +115,7 @@ struct SpellData {
         ),
         Spell(
             id: "mass-cure", name: "Mass Cure",
-            description: "Call out words of restoration, healing allies within range.",
+            description: "Pray that nearby allies be healed.",
             range: 1, offenseDie: 0, defenseDie: 2, manaCost: 4,
             isQuickCast: true, isPassive: false, noSave: true, isAoE: true,
             hasAdvantage: false, causesParalysis: false, affectsMovement: false,
@@ -149,7 +123,7 @@ struct SpellData {
         ),
         Spell(
             id: "sleet-storm", name: "Sleet Storm",
-            description: "Summon a snowstorm, paralyzing and damaging hexes within.",
+            description: "Summon a chilling, blinding storm.",
             range: 2, offenseDie: 1, defenseDie: 0, manaCost: 4,
             isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
             hasAdvantage: false, causesParalysis: true, affectsMovement: false,

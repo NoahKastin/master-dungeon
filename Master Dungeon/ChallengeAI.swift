@@ -351,21 +351,6 @@ class ChallengeAI {
                     position: pos,
                     properties: ["hp": min(constraints.maxDamagePerTurn * 2, 4)]
                 ))
-            } else if constraints.canMove {
-                // Pit - player can teleport over
-                if randomSource.nextBool() {
-                    elements.append(ChallengeElement(
-                        type: .pit(depth: 3),
-                        position: pos,
-                        properties: [:]
-                    ))
-                } else {
-                    elements.append(ChallengeElement(
-                        type: .water(depth: 2),
-                        position: pos,
-                        properties: [:]
-                    ))
-                }
             } else {
                 // Destructible as fallback (if damage available) or skip
                 if constraints.canDealDamage {
@@ -836,8 +821,6 @@ class ChallengeAI {
             case .trigger: elementTypes.insert("trigger")
             case .obstacle: elementTypes.insert("obstacle")
             case .hazard: elementTypes.insert("hazard")
-            case .pit: elementTypes.insert("pit")
-            case .water: elementTypes.insert("water")
             }
         }
         let varietyScore = min(1.0, Double(elementTypes.count) / 3.0)
@@ -874,8 +857,6 @@ class ChallengeAI {
             return [.damage]
         case .darkness:
             return [.illumination]
-        case .pit, .water:
-            return [.mobility]
         case .npc(let needsHealing, _):
             return needsHealing ? [.healing] : []
         case .trigger:
@@ -893,8 +874,6 @@ class ChallengeAI {
         var hasInvisible = false
         var hasDarkness = false
         var needsHealing = false
-        var hasPit = false
-        var hasWater = false
         var hasObstacle = false
         var hasTrigger = false
         var targetCount = 0
@@ -905,8 +884,6 @@ class ChallengeAI {
             case .invisibleEnemy: hasInvisible = true; enemyCount += 1
             case .darkness: hasDarkness = true
             case .npc(let healing, _): needsHealing = healing
-            case .pit: hasPit = true
-            case .water: hasWater = true
             case .obstacle: hasObstacle = true
             case .trigger: hasTrigger = true
             case .target: targetCount += 1
@@ -949,21 +926,15 @@ class ChallengeAI {
             }
 
         case .obstacle:
-            var hazards: [String] = []
-            if hasPit { hazards.append("treacherous pits") }
-            if hasWater { hazards.append("deep water") }
-            if hasObstacle { hazards.append("crumbling debris") }
-
-            if hazards.isEmpty {
-                return "Navigate past the obstacles to reach your goal!"
-            } else {
-                let hazardList = hazards.joined(separator: " and ")
+            if hasObstacle {
                 let messages = [
-                    "The path ahead is blocked by \(hazardList)!",
-                    "You must cross \(hazardList) to reach your destination!",
-                    "Danger! \(hazardList.capitalized) lies between you and safety!"
+                    "The path ahead is blocked by debris!",
+                    "Obstacles block your way forward!",
+                    "Navigate past the barriers to reach your goal!"
                 ]
                 return messages[attempt % messages.count]
+            } else {
+                return "Navigate past the obstacles to reach your goal!"
             }
 
         case .puzzle:
@@ -1126,29 +1097,19 @@ class ChallengeAI {
                 position: HexCoord(q: 0, r: 2),
                 properties: [:]
             ))
-            // Create complete wall at r=1 to block all paths
+            // Create partial wall at r=1 with gaps to navigate
             for q in -2...2 {
-                if loadout.hasCapability(.damage) {
+                // Leave some gaps for navigation
+                if q == 0 || (loadout.hasCapability(.damage) && q != -1) {
                     elements.append(ChallengeElement(
                         type: .obstacle(blocking: true, destructible: true),
                         position: HexCoord(q: q, r: 1),
                         properties: ["hp": 2]
                     ))
-                } else {
-                    elements.append(ChallengeElement(
-                        type: .pit(depth: 2),
-                        position: HexCoord(q: q, r: 1),
-                        properties: [:]
-                    ))
                 }
             }
-            if loadout.hasCapability(.damage) {
-                required.insert(.damage)
-                description = "Blast through the barriers to reach safety!"
-            } else {
-                required.insert(.mobility)
-                description = "Leap over the chasm to reach safety!"
-            }
+            required.insert(.damage)
+            description = "Blast through the barriers to reach safety!"
 
         case .rescue:
             // Rescue - injured NPC (closer to player at distance 1 for easy targeting)
