@@ -294,6 +294,249 @@ class SpellBar: SKNode {
     }
 }
 
+// MARK: - Spell Icons
+
+struct SpellIcons {
+    /// Create a simple line-drawing icon for a spell
+    static func createIcon(for spellId: String, size: CGFloat, color: SKColor) -> SKNode {
+        let container = SKNode()
+        let s = size * 0.35  // Scale factor for icon within slot
+
+        let path = CGMutablePath()
+
+        switch spellId {
+        case "pass":
+            // Hourglass
+            path.move(to: CGPoint(x: -s * 0.5, y: s))
+            path.addLine(to: CGPoint(x: s * 0.5, y: s))
+            path.addLine(to: CGPoint(x: 0, y: 0))
+            path.addLine(to: CGPoint(x: s * 0.5, y: -s))
+            path.addLine(to: CGPoint(x: -s * 0.5, y: -s))
+            path.addLine(to: CGPoint(x: 0, y: 0))
+            path.closeSubpath()
+
+        case "stealth":
+            // Eye with slash
+            path.addEllipse(in: CGRect(x: -s * 0.7, y: -s * 0.4, width: s * 1.4, height: s * 0.8))
+            path.addEllipse(in: CGRect(x: -s * 0.2, y: -s * 0.2, width: s * 0.4, height: s * 0.4))
+            // Slash
+            path.move(to: CGPoint(x: -s * 0.8, y: -s * 0.8))
+            path.addLine(to: CGPoint(x: s * 0.8, y: s * 0.8))
+
+        case "entangle":
+            // Vines/roots spiral
+            path.move(to: CGPoint(x: 0, y: -s))
+            path.addCurve(to: CGPoint(x: 0, y: s), control1: CGPoint(x: s, y: -s * 0.5), control2: CGPoint(x: -s, y: s * 0.5))
+            path.move(to: CGPoint(x: -s * 0.5, y: -s))
+            path.addCurve(to: CGPoint(x: s * 0.5, y: s * 0.5), control1: CGPoint(x: -s * 0.5, y: 0), control2: CGPoint(x: s * 0.5, y: 0))
+
+        case "shed-light":
+            // Sun with rays
+            path.addEllipse(in: CGRect(x: -s * 0.3, y: -s * 0.3, width: s * 0.6, height: s * 0.6))
+            for i in 0..<8 {
+                let angle = CGFloat(i) * .pi / 4
+                path.move(to: CGPoint(x: cos(angle) * s * 0.45, y: sin(angle) * s * 0.45))
+                path.addLine(to: CGPoint(x: cos(angle) * s * 0.8, y: sin(angle) * s * 0.8))
+            }
+
+        case "spare-the-dying":
+            // Reaching hand (simplified)
+            path.move(to: CGPoint(x: -s * 0.3, y: -s))
+            path.addLine(to: CGPoint(x: -s * 0.3, y: 0))
+            path.addLine(to: CGPoint(x: -s * 0.6, y: s * 0.3))
+            path.move(to: CGPoint(x: -s * 0.3, y: 0))
+            path.addLine(to: CGPoint(x: 0, y: s * 0.5))
+            path.move(to: CGPoint(x: -s * 0.3, y: 0))
+            path.addLine(to: CGPoint(x: s * 0.1, y: s * 0.6))
+            path.move(to: CGPoint(x: -s * 0.3, y: 0))
+            path.addLine(to: CGPoint(x: s * 0.3, y: s * 0.5))
+            path.move(to: CGPoint(x: -s * 0.3, y: 0))
+            path.addLine(to: CGPoint(x: s * 0.4, y: s * 0.3))
+
+        case "brand":
+            // Sword with glow
+            path.move(to: CGPoint(x: 0, y: s))
+            path.addLine(to: CGPoint(x: 0, y: -s * 0.5))
+            path.move(to: CGPoint(x: -s * 0.4, y: s * 0.3))
+            path.addLine(to: CGPoint(x: s * 0.4, y: s * 0.3))
+            path.move(to: CGPoint(x: 0, y: -s * 0.5))
+            path.addLine(to: CGPoint(x: -s * 0.2, y: -s * 0.8))
+            path.addLine(to: CGPoint(x: s * 0.2, y: -s * 0.8))
+            path.addLine(to: CGPoint(x: 0, y: -s * 0.5))
+            // Glow rays
+            path.move(to: CGPoint(x: s * 0.3, y: s * 0.7))
+            path.addLine(to: CGPoint(x: s * 0.5, y: s * 0.9))
+            path.move(to: CGPoint(x: -s * 0.3, y: s * 0.7))
+            path.addLine(to: CGPoint(x: -s * 0.5, y: s * 0.9))
+
+        case "poison-puff":
+            // Cloud/puff
+            path.addEllipse(in: CGRect(x: -s * 0.6, y: -s * 0.3, width: s * 0.5, height: s * 0.5))
+            path.addEllipse(in: CGRect(x: -s * 0.2, y: s * 0.1, width: s * 0.6, height: s * 0.5))
+            path.addEllipse(in: CGRect(x: s * 0.1, y: -s * 0.4, width: s * 0.5, height: s * 0.6))
+
+        case "shocking-grasp":
+            // Lightning bolt
+            path.move(to: CGPoint(x: s * 0.2, y: s))
+            path.addLine(to: CGPoint(x: -s * 0.3, y: s * 0.1))
+            path.addLine(to: CGPoint(x: s * 0.1, y: s * 0.1))
+            path.addLine(to: CGPoint(x: -s * 0.2, y: -s))
+
+        case "thunderwave":
+            // Expanding wave arcs
+            for i in 0..<3 {
+                let r = s * (0.3 + CGFloat(i) * 0.25)
+                path.addArc(center: .zero, radius: r, startAngle: -.pi * 0.7, endAngle: .pi * 0.7, clockwise: false)
+            }
+
+        case "cure-wounds":
+            // Heart with plus
+            let hs = s * 0.6
+            path.move(to: CGPoint(x: 0, y: -hs * 0.8))
+            path.addCurve(to: CGPoint(x: -hs, y: hs * 0.2), control1: CGPoint(x: -hs * 0.5, y: -hs * 0.8), control2: CGPoint(x: -hs, y: -hs * 0.3))
+            path.addCurve(to: CGPoint(x: 0, y: hs * 0.1), control1: CGPoint(x: -hs, y: hs * 0.6), control2: CGPoint(x: -hs * 0.3, y: hs * 0.3))
+            path.addCurve(to: CGPoint(x: hs, y: hs * 0.2), control1: CGPoint(x: hs * 0.3, y: hs * 0.3), control2: CGPoint(x: hs, y: hs * 0.6))
+            path.addCurve(to: CGPoint(x: 0, y: -hs * 0.8), control1: CGPoint(x: hs, y: -hs * 0.3), control2: CGPoint(x: hs * 0.5, y: -hs * 0.8))
+            // Plus
+            path.move(to: CGPoint(x: 0, y: hs * 0.6))
+            path.addLine(to: CGPoint(x: 0, y: hs))
+            path.move(to: CGPoint(x: -hs * 0.2, y: hs * 0.8))
+            path.addLine(to: CGPoint(x: hs * 0.2, y: hs * 0.8))
+
+        case "magic-missile":
+            // Dart/arrow
+            path.move(to: CGPoint(x: -s * 0.8, y: -s * 0.8))
+            path.addLine(to: CGPoint(x: s * 0.5, y: s * 0.5))
+            path.addLine(to: CGPoint(x: s * 0.2, y: s * 0.5))
+            path.addLine(to: CGPoint(x: s * 0.8, y: s * 0.8))
+            path.addLine(to: CGPoint(x: s * 0.5, y: s * 0.2))
+            path.addLine(to: CGPoint(x: s * 0.5, y: s * 0.5))
+
+        case "acid-splash":
+            // Droplet
+            path.move(to: CGPoint(x: 0, y: s))
+            path.addCurve(to: CGPoint(x: -s * 0.6, y: -s * 0.3), control1: CGPoint(x: -s * 0.8, y: s * 0.2), control2: CGPoint(x: -s * 0.8, y: -s * 0.1))
+            path.addCurve(to: CGPoint(x: 0, y: -s), control1: CGPoint(x: -s * 0.6, y: -s * 0.7), control2: CGPoint(x: -s * 0.3, y: -s))
+            path.addCurve(to: CGPoint(x: s * 0.6, y: -s * 0.3), control1: CGPoint(x: s * 0.3, y: -s), control2: CGPoint(x: s * 0.6, y: -s * 0.7))
+            path.addCurve(to: CGPoint(x: 0, y: s), control1: CGPoint(x: s * 0.8, y: -s * 0.1), control2: CGPoint(x: s * 0.8, y: s * 0.2))
+
+        case "burning-hands":
+            // Flame
+            path.move(to: CGPoint(x: 0, y: s))
+            path.addCurve(to: CGPoint(x: -s * 0.5, y: -s * 0.2), control1: CGPoint(x: -s * 0.3, y: s * 0.5), control2: CGPoint(x: -s * 0.6, y: s * 0.1))
+            path.addCurve(to: CGPoint(x: 0, y: -s), control1: CGPoint(x: -s * 0.4, y: -s * 0.6), control2: CGPoint(x: -s * 0.2, y: -s))
+            path.addCurve(to: CGPoint(x: s * 0.5, y: -s * 0.2), control1: CGPoint(x: s * 0.2, y: -s), control2: CGPoint(x: s * 0.4, y: -s * 0.6))
+            path.addCurve(to: CGPoint(x: 0, y: s), control1: CGPoint(x: s * 0.6, y: s * 0.1), control2: CGPoint(x: s * 0.3, y: s * 0.5))
+            // Inner flame
+            path.move(to: CGPoint(x: 0, y: s * 0.5))
+            path.addCurve(to: CGPoint(x: 0, y: -s * 0.5), control1: CGPoint(x: -s * 0.2, y: 0), control2: CGPoint(x: s * 0.2, y: -s * 0.3))
+
+        case "life-transference":
+            // Yin-yang swirl
+            path.addArc(center: .zero, radius: s * 0.8, startAngle: 0, endAngle: .pi * 2, clockwise: false)
+            path.addArc(center: CGPoint(x: 0, y: s * 0.4), radius: s * 0.4, startAngle: .pi * 0.5, endAngle: .pi * 1.5, clockwise: false)
+            path.addArc(center: CGPoint(x: 0, y: -s * 0.4), radius: s * 0.4, startAngle: .pi * 1.5, endAngle: .pi * 0.5, clockwise: false)
+
+        case "chill-touch":
+            // Skeletal hand
+            path.move(to: CGPoint(x: 0, y: -s))
+            path.addLine(to: CGPoint(x: 0, y: s * 0.2))
+            // Fingers
+            path.move(to: CGPoint(x: 0, y: s * 0.2))
+            path.addLine(to: CGPoint(x: -s * 0.5, y: s))
+            path.move(to: CGPoint(x: 0, y: s * 0.2))
+            path.addLine(to: CGPoint(x: -s * 0.15, y: s))
+            path.move(to: CGPoint(x: 0, y: s * 0.2))
+            path.addLine(to: CGPoint(x: s * 0.15, y: s))
+            path.move(to: CGPoint(x: 0, y: s * 0.2))
+            path.addLine(to: CGPoint(x: s * 0.5, y: s * 0.6))
+            // Knuckles
+            path.addEllipse(in: CGRect(x: -s * 0.15, y: s * 0.1, width: s * 0.3, height: s * 0.2))
+
+        case "mass-cure":
+            // Multiple plus signs / healing wave
+            path.move(to: CGPoint(x: -s * 0.6, y: 0))
+            path.addLine(to: CGPoint(x: -s * 0.2, y: 0))
+            path.move(to: CGPoint(x: -s * 0.4, y: -s * 0.2))
+            path.addLine(to: CGPoint(x: -s * 0.4, y: s * 0.2))
+            path.move(to: CGPoint(x: s * 0.2, y: 0))
+            path.addLine(to: CGPoint(x: s * 0.6, y: 0))
+            path.move(to: CGPoint(x: s * 0.4, y: -s * 0.2))
+            path.addLine(to: CGPoint(x: s * 0.4, y: s * 0.2))
+            // Wave under
+            path.move(to: CGPoint(x: -s * 0.8, y: -s * 0.6))
+            path.addCurve(to: CGPoint(x: s * 0.8, y: -s * 0.6), control1: CGPoint(x: -s * 0.3, y: -s * 0.9), control2: CGPoint(x: s * 0.3, y: -s * 0.3))
+
+        case "sleet-storm":
+            // Snowflake
+            for i in 0..<6 {
+                let angle = CGFloat(i) * .pi / 3
+                path.move(to: .zero)
+                path.addLine(to: CGPoint(x: cos(angle) * s * 0.8, y: sin(angle) * s * 0.8))
+                // Small branches
+                let branchStart = CGPoint(x: cos(angle) * s * 0.5, y: sin(angle) * s * 0.5)
+                let branchAngle1 = angle + .pi / 6
+                let branchAngle2 = angle - .pi / 6
+                path.move(to: branchStart)
+                path.addLine(to: CGPoint(x: branchStart.x + cos(branchAngle1) * s * 0.2, y: branchStart.y + sin(branchAngle1) * s * 0.2))
+                path.move(to: branchStart)
+                path.addLine(to: CGPoint(x: branchStart.x + cos(branchAngle2) * s * 0.2, y: branchStart.y + sin(branchAngle2) * s * 0.2))
+            }
+
+        case "misty-step":
+            // Footprint with mist swirl
+            path.move(to: CGPoint(x: -s * 0.3, y: -s * 0.8))
+            path.addLine(to: CGPoint(x: -s * 0.3, y: s * 0.2))
+            path.addLine(to: CGPoint(x: s * 0.3, y: s * 0.2))
+            path.addLine(to: CGPoint(x: s * 0.3, y: -s * 0.8))
+            // Mist swirl
+            path.move(to: CGPoint(x: -s * 0.5, y: s * 0.5))
+            path.addCurve(to: CGPoint(x: s * 0.5, y: s * 0.8), control1: CGPoint(x: 0, y: s * 0.3), control2: CGPoint(x: s * 0.3, y: s))
+
+        case "eldritch-blast":
+            // Energy beam / eldritch tentacle
+            path.move(to: CGPoint(x: -s * 0.8, y: 0))
+            path.addCurve(to: CGPoint(x: s * 0.8, y: 0), control1: CGPoint(x: -s * 0.3, y: s * 0.6), control2: CGPoint(x: s * 0.3, y: -s * 0.6))
+            // Energy crackles
+            path.move(to: CGPoint(x: s * 0.4, y: s * 0.1))
+            path.addLine(to: CGPoint(x: s * 0.7, y: s * 0.4))
+            path.move(to: CGPoint(x: s * 0.5, y: -s * 0.2))
+            path.addLine(to: CGPoint(x: s * 0.8, y: -s * 0.5))
+
+        case "fireball":
+            // Explosion / big flame burst
+            path.addEllipse(in: CGRect(x: -s * 0.5, y: -s * 0.5, width: s, height: s))
+            // Explosion rays
+            for i in 0..<8 {
+                let angle = CGFloat(i) * .pi / 4 + .pi / 8
+                path.move(to: CGPoint(x: cos(angle) * s * 0.5, y: sin(angle) * s * 0.5))
+                path.addLine(to: CGPoint(x: cos(angle) * s * 0.9, y: sin(angle) * s * 0.9))
+            }
+
+        default:
+            // Fallback: simple star
+            for i in 0..<5 {
+                let angle = CGFloat(i) * .pi * 2 / 5 - .pi / 2
+                let nextAngle = CGFloat(i + 2) * .pi * 2 / 5 - .pi / 2
+                if i == 0 {
+                    path.move(to: CGPoint(x: cos(angle) * s * 0.8, y: sin(angle) * s * 0.8))
+                }
+                path.addLine(to: CGPoint(x: cos(nextAngle) * s * 0.8, y: sin(nextAngle) * s * 0.8))
+            }
+        }
+
+        let shape = SKShapeNode(path: path)
+        shape.strokeColor = color
+        shape.fillColor = .clear
+        shape.lineWidth = 2
+        shape.lineCap = .round
+        shape.lineJoin = .round
+        container.addChild(shape)
+
+        return container
+    }
+}
+
 // MARK: - Spell Slot
 
 class SpellSlot: SKNode {
@@ -301,7 +544,7 @@ class SpellSlot: SKNode {
     private let size: CGFloat
 
     private let background: SKShapeNode
-    private let iconLabel: SKLabelNode
+    private var iconNode: SKNode
     private let costLabel: SKLabelNode
     private let selectionBorder: SKShapeNode
 
@@ -318,12 +561,9 @@ class SpellSlot: SKNode {
         background.strokeColor = SKColor(white: 0.3, alpha: 1.0)
         background.lineWidth = 2
 
-        // Spell icon (using first letter for now)
-        iconLabel = SKLabelNode(fontNamed: "Cochin-Bold")
-        iconLabel.fontSize = size * 0.4
-        iconLabel.fontColor = SpellSlot.spellColor(for: spell)
-        iconLabel.verticalAlignmentMode = .center
-        iconLabel.text = String(spell.name.prefix(2))
+        // Spell icon
+        let iconColor = SpellSlot.spellColor(for: spell)
+        iconNode = SpellIcons.createIcon(for: spell.id, size: size, color: iconColor)
 
         // Mana cost - green for restorers, red for spenders
         costLabel = SKLabelNode(fontNamed: "Cochin-Bold")
@@ -352,7 +592,7 @@ class SpellSlot: SKNode {
         super.init()
 
         addChild(background)
-        addChild(iconLabel)
+        addChild(iconNode)
         addChild(costLabel)
         addChild(selectionBorder)
     }
