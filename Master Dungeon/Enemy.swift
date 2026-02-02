@@ -110,6 +110,9 @@ class Enemy: GKEntity {
         case .swarm:
             return swarmBehavior(playerPosition: playerPosition, distance: distanceToPlayer, blocked: blocked)
 
+        case .healer:
+            return healerBehavior(playerPosition: playerPosition, distance: distanceToPlayer, blocked: blocked)
+
         case .boss:
             return bossBehavior(playerPosition: playerPosition, distance: distanceToPlayer, blocked: blocked)
         }
@@ -197,6 +200,34 @@ class Enemy: GKEntity {
         return .wait
     }
 
+    private func healerBehavior(playerPosition: HexCoord, distance: Int, blocked: Set<HexCoord>) -> EnemyAction {
+        let preferredRange = 4
+        let healRange = 3
+
+        // Priority 1: Try to heal allies (GameScene will find the target)
+        // Healers heal for their damage value
+        if distance >= 2 {
+            return .healAlly(amount: damage, range: healRange)
+        }
+
+        // Priority 2: If player is too close, retreat
+        if distance < preferredRange {
+            let retreatDir = findRetreatDirection(from: playerPosition, blocked: blocked)
+            if let newPos = retreatDir {
+                moveTo(newPos)
+                return .move(to: newPos)
+            }
+        }
+
+        // Priority 3: Weak attack if cornered
+        if distance == 1 {
+            return .attack(target: playerPosition, damage: max(1, damage / 2))
+        }
+
+        // Default: try to heal
+        return .healAlly(amount: damage, range: healRange)
+    }
+
     private func bossBehavior(playerPosition: HexCoord, distance: Int, blocked: Set<HexCoord>) -> EnemyAction {
         // Boss has special attack patterns
         if distance == 1 {
@@ -253,9 +284,10 @@ class Enemy: GKEntity {
 
     static func behaviorPriority(_ behavior: EnemyBehavior) -> Int {
         switch behavior {
-        case .boss: return 5
-        case .aggressive: return 4
-        case .ranged: return 3
+        case .boss: return 6
+        case .aggressive: return 5
+        case .ranged: return 4
+        case .healer: return 3
         case .swarm: return 2
         case .defensive: return 1
         }
@@ -290,6 +322,7 @@ enum EnemyAction {
     case move(to: HexCoord)
     case attack(target: HexCoord, damage: Int)
     case specialAttack(type: SpecialAttackType, center: HexCoord, radius: Int, damage: Int)
+    case healAlly(amount: Int, range: Int)  // Healer heals nearby ally
     case stunned
 
     enum SpecialAttackType {

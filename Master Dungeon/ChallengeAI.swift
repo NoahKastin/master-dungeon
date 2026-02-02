@@ -250,6 +250,40 @@ class ChallengeAI {
         // CSP Constraint: Enemy distance based on player's range
         let maxDistance = constraints.canAttackAtRange ? constraints.maxAttackRange : 3
 
+        // Special case: Ranged attack players get ranged OR healer enemies (50/50)
+        print("COMBAT CSP DEBUG: canAttackAtRange=\(constraints.canAttackAtRange)")
+        if constraints.canAttackAtRange {
+            if randomSource.nextBool() {
+                print("COMBAT CSP DEBUG: Spawning ranged enemy challenge!")
+                let rangedPos = randomValidPosition(minDist: 3, maxDist: 3, avoiding: usedPositions)
+                usedPositions.insert(rangedPos)
+                elements.append(ChallengeElement(
+                    type: .enemy(hp: 2 + difficulty, damage: 1, behavior: .ranged),
+                    position: rangedPos,
+                    properties: [:]
+                ))
+            } else {
+                print("COMBAT CSP DEBUG: Spawning healer enemy challenge!")
+                // Front-line enemy + healer support
+                let frontPos = randomValidPosition(minDist: 2, maxDist: 2, avoiding: usedPositions)
+                usedPositions.insert(frontPos)
+                elements.append(ChallengeElement(
+                    type: .enemy(hp: 3 + difficulty, damage: 1, behavior: .aggressive),
+                    position: frontPos,
+                    properties: [:]
+                ))
+
+                let healerPos = randomValidPosition(minDist: 3, maxDist: 3, avoiding: usedPositions)
+                usedPositions.insert(healerPos)
+                elements.append(ChallengeElement(
+                    type: .enemy(hp: 2, damage: 1, behavior: .healer),
+                    position: healerPos,
+                    properties: [:]
+                ))
+            }
+            return elements
+        }
+
         for _ in 0..<enemyCount {
             let pos = randomValidPosition(minDist: 2, maxDist: maxDistance, avoiding: usedPositions)
             usedPositions.insert(pos)
@@ -1018,18 +1052,49 @@ class ChallengeAI {
         switch type {
         case .combat, .survival:
             // Combat/Survival - spawn enemies
-            elements.append(ChallengeElement(
-                type: .enemy(hp: 2, damage: 1, behavior: .aggressive),
-                position: HexCoord(q: 2, r: 0),
-                properties: [:]
-            ))
-            elements.append(ChallengeElement(
-                type: .enemy(hp: 1, damage: 1, behavior: .defensive),
-                position: HexCoord(q: 2, r: 1),
-                properties: [:]
-            ))
+            // Ranged attack players get ranged OR healer enemies (50/50)
+            let hasRangedAttack = loadout.spells.contains(where: { $0.isOffensive && $0.range >= 3 })
+            if hasRangedAttack {
+                let isMale = Bool.random()
+                let pronoun = isMale ? "him" : "her"
+                let subject = isMale ? "he" : "she"
+
+                if Bool.random() {
+                    print("FALLBACK DEBUG: Spawning ranged enemy challenge")
+                    elements.append(ChallengeElement(
+                        type: .enemy(hp: 3, damage: 1, behavior: .ranged),
+                        position: HexCoord(q: 3, r: 0),
+                        properties: [:]
+                    ))
+                    description = "A distant archer takes aim! Shoot \(pronoun) before \(subject) shoots you!"
+                } else {
+                    print("FALLBACK DEBUG: Spawning healer enemy challenge")
+                    elements.append(ChallengeElement(
+                        type: .enemy(hp: 3, damage: 1, behavior: .aggressive),
+                        position: HexCoord(q: 2, r: 0),
+                        properties: [:]
+                    ))
+                    elements.append(ChallengeElement(
+                        type: .enemy(hp: 2, damage: 1, behavior: .healer),
+                        position: HexCoord(q: 3, r: 0),
+                        properties: [:]
+                    ))
+                    description = "A healer supports an ally! Shoot \(pronoun) from range!"
+                }
+            } else {
+                elements.append(ChallengeElement(
+                    type: .enemy(hp: 2, damage: 1, behavior: .aggressive),
+                    position: HexCoord(q: 2, r: 0),
+                    properties: [:]
+                ))
+                elements.append(ChallengeElement(
+                    type: .enemy(hp: 1, damage: 1, behavior: .defensive),
+                    position: HexCoord(q: 2, r: 1),
+                    properties: [:]
+                ))
+                description = type == .combat ? "Hostile creatures block your path. Defeat them!" : "Survive the onslaught!"
+            }
             required.insert(.damage)
-            description = type == .combat ? "Hostile creatures block your path. Defeat them!" : "Survive the onslaught!"
 
         case .stealth, .timed:
             // Stealth/Timed - need a target to reach

@@ -61,6 +61,7 @@ enum EnemyBehavior {
     case aggressive    // Moves toward player, attacks in range
     case defensive     // Holds position, attacks if approached
     case ranged        // Keeps distance, attacks from range
+    case healer        // Stays back, heals other enemies
     case swarm         // Multiple weak enemies, AoE effective
     case boss          // High HP, multiple attacks
 }
@@ -554,6 +555,37 @@ class ChallengeGenerator {
 
     private func generateCombatElements(count: Int, analysis: LoadoutAnalysis, difficulty: Int, usedPositions: inout Set<HexCoord>) -> [ChallengeElement] {
         var elements: [ChallengeElement] = []
+
+        // Ranged attack players get ranged OR healer enemies (50/50)
+        print("COMBAT PROC DEBUG: hasRangedAttack=\(analysis.hasRangedAttack)")
+        if analysis.hasRangedAttack {
+            if randomSource.nextBool() {
+                let rangedPos = randomPosition(minDistance: 3, maxDistance: 3, avoiding: usedPositions)
+                usedPositions.insert(rangedPos)
+                elements.append(ChallengeElement(
+                    type: .enemy(hp: 2 + difficulty, damage: 1, behavior: .ranged),
+                    position: rangedPos,
+                    properties: [:]
+                ))
+            } else {
+                let frontPos = randomPosition(minDistance: 2, maxDistance: 2, avoiding: usedPositions)
+                usedPositions.insert(frontPos)
+                elements.append(ChallengeElement(
+                    type: .enemy(hp: 3 + difficulty, damage: 1, behavior: .aggressive),
+                    position: frontPos,
+                    properties: [:]
+                ))
+
+                let healerPos = randomPosition(minDistance: 3, maxDistance: 3, avoiding: usedPositions)
+                usedPositions.insert(healerPos)
+                elements.append(ChallengeElement(
+                    type: .enemy(hp: 2, damage: 1, behavior: .healer),
+                    position: healerPos,
+                    properties: [:]
+                ))
+            }
+            return elements
+        }
 
         if analysis.hasAoE {
             // Swarm: multiple weak enemies

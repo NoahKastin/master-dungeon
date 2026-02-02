@@ -605,8 +605,24 @@ class GameScene: SKScene {
         path.closeSubpath()
 
         let body = SKShapeNode(path: path)
-        body.fillColor = behavior == .boss ? SKColor(red: 0.6, green: 0.1, blue: 0.1, alpha: 1.0) : SKColor(red: 0.9, green: 0.2, blue: 0.2, alpha: 1.0)
-        body.strokeColor = SKColor(red: 0.5, green: 0.1, blue: 0.1, alpha: 1.0)
+        let fillColor: SKColor
+        let strokeColor: SKColor
+        switch behavior {
+        case .boss:
+            fillColor = SKColor(red: 0.6, green: 0.1, blue: 0.1, alpha: 1.0)
+            strokeColor = SKColor(red: 0.5, green: 0.1, blue: 0.1, alpha: 1.0)
+        case .ranged:
+            fillColor = SKColor(red: 0.2, green: 0.6, blue: 0.9, alpha: 1.0)  // Blue for ranged
+            strokeColor = SKColor(red: 0.1, green: 0.4, blue: 0.6, alpha: 1.0)
+        case .healer:
+            fillColor = SKColor(red: 0.2, green: 0.8, blue: 0.3, alpha: 1.0)  // Green for healer
+            strokeColor = SKColor(red: 0.1, green: 0.5, blue: 0.2, alpha: 1.0)
+        default:
+            fillColor = SKColor(red: 0.9, green: 0.2, blue: 0.2, alpha: 1.0)
+            strokeColor = SKColor(red: 0.5, green: 0.1, blue: 0.1, alpha: 1.0)
+        }
+        body.fillColor = fillColor
+        body.strokeColor = strokeColor
         body.lineWidth = 2
         container.addChild(body)
 
@@ -1503,6 +1519,21 @@ class GameScene: SKScene {
                         let screenPos = CGPoint(x: size.width / 2, y: size.height / 2)
                         showDamageNumber(damage, at: screenPos)
                     }
+                }
+
+            case .healAlly(let amount, let range):
+                // Find most damaged ally within range
+                let allies = activeEnemies.filter { ally in
+                    ally.id != enemy.id &&
+                    ally.isAlive &&
+                    ally.hp < ally.maxHP &&
+                    enemy.position.distance(to: ally.position) <= range
+                }
+                if let target = allies.min(by: { $0.hp < $1.hp }) {
+                    target.heal(amount)
+                    let screenPos = worldToScreen(target.position)
+                    showHealingNumber(amount, at: screenPos)
+                    showSpellFlash(color: .green, at: screenPos)
                 }
 
             case .stunned:
