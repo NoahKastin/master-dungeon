@@ -469,7 +469,8 @@ class GameScene: SKScene {
         challengeHadEnemies = true  // Mark that this challenge has enemies
 
         // Create visual sprite
-        let sprite = createEnemySprite(hp: enemy.hp, behavior: enemy.behavior)
+        let isStealth = currentChallenge?.type == .stealth
+        let sprite = createEnemySprite(hp: enemy.hp, behavior: enemy.behavior, isStealth: isStealth)
         // Position using local coordinates (relative to player)
         let localCoord = enemy.position - player.position
         sprite.position = hexLayout.hexToScreen(localCoord)
@@ -509,6 +510,10 @@ class GameScene: SKScene {
         guard let sprite = enemySprites[enemy.id] else { return }
         // Update HP label in sprite (sprite is already an SKNode container)
         if let hpLabel = sprite.children.compactMap({ $0 as? SKLabelNode }).first {
+            // Stealth enemies keep their ∞ label
+            if currentChallenge?.type == .stealth {
+                return
+            }
             hpLabel.text = enemy.isMerged ? "+\(hp)" : "\(hp)"
         }
     }
@@ -584,7 +589,7 @@ class GameScene: SKScene {
         }
     }
 
-    private func createEnemySprite(hp: Int, behavior: EnemyBehavior) -> SKNode {
+    private func createEnemySprite(hp: Int, behavior: EnemyBehavior, isStealth: Bool = false) -> SKNode {
         let container = SKNode()
 
         // Enemy body - red triangle
@@ -598,19 +603,24 @@ class GameScene: SKScene {
         let body = SKShapeNode(path: path)
         let fillColor: SKColor
         let strokeColor: SKColor
-        switch behavior {
-        case .boss:
-            fillColor = SKColor(red: 0.6, green: 0.1, blue: 0.1, alpha: 1.0)
-            strokeColor = SKColor(red: 0.5, green: 0.1, blue: 0.1, alpha: 1.0)
-        case .ranged:
-            fillColor = SKColor(red: 0.2, green: 0.6, blue: 0.9, alpha: 1.0)  // Blue for ranged
-            strokeColor = SKColor(red: 0.1, green: 0.4, blue: 0.6, alpha: 1.0)
-        case .healer:
-            fillColor = SKColor(red: 0.2, green: 0.8, blue: 0.3, alpha: 1.0)  // Green for healer
-            strokeColor = SKColor(red: 0.1, green: 0.5, blue: 0.2, alpha: 1.0)
-        default:
-            fillColor = SKColor(red: 0.9, green: 0.2, blue: 0.2, alpha: 1.0)
-            strokeColor = SKColor(red: 0.5, green: 0.1, blue: 0.1, alpha: 1.0)
+        if isStealth {
+            fillColor = SKColor(red: 0.85, green: 0.65, blue: 0.1, alpha: 1.0)  // Gold for stealth
+            strokeColor = SKColor(red: 0.6, green: 0.45, blue: 0.05, alpha: 1.0)
+        } else {
+            switch behavior {
+            case .boss:
+                fillColor = SKColor(red: 0.6, green: 0.1, blue: 0.1, alpha: 1.0)
+                strokeColor = SKColor(red: 0.5, green: 0.1, blue: 0.1, alpha: 1.0)
+            case .ranged:
+                fillColor = SKColor(red: 0.2, green: 0.6, blue: 0.9, alpha: 1.0)  // Blue for ranged
+                strokeColor = SKColor(red: 0.1, green: 0.4, blue: 0.6, alpha: 1.0)
+            case .healer:
+                fillColor = SKColor(red: 0.2, green: 0.8, blue: 0.3, alpha: 1.0)  // Green for healer
+                strokeColor = SKColor(red: 0.1, green: 0.5, blue: 0.2, alpha: 1.0)
+            default:
+                fillColor = SKColor(red: 0.9, green: 0.2, blue: 0.2, alpha: 1.0)
+                strokeColor = SKColor(red: 0.5, green: 0.1, blue: 0.1, alpha: 1.0)
+            }
         }
         body.fillColor = fillColor
         body.strokeColor = strokeColor
@@ -619,7 +629,7 @@ class GameScene: SKScene {
 
         // HP indicator
         let hpLabel = SKLabelNode(fontNamed: "Cochin-Bold")
-        hpLabel.text = "\(hp)"
+        hpLabel.text = isStealth ? "∞" : "\(hp)"
         hpLabel.fontSize = 12
         hpLabel.fontColor = .white
         hpLabel.verticalAlignmentMode = .center
@@ -1328,10 +1338,16 @@ class GameScene: SKScene {
 
         case .stealth:
             // Stealth challenges complete when player reaches target without detection
-            // Fail if player was detected
+            // Fail if player was detected — lose 1 HP and advance
             if playerDetected {
                 showStatusText("Detected!", at: CGPoint(x: size.width / 2, y: size.height / 2), color: .red)
-                isComplete = false
+                player.takeDamage(1)
+                challengeCompleted = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                    self?.challengeCompleted = false
+                    self?.generateNewChallenge()
+                }
+                return
             } else {
                 isComplete = checkAllTargetsReached()
             }
