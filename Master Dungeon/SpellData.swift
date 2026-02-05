@@ -23,19 +23,19 @@ struct SpellData {
         passSpell,
         // Mana 0
         Spell(
+            id: "stealth", name: "Blur",
+            description: "Become hazy, confusing nearby foes.",
+            range: 0, offenseDie: 0, defenseDie: 0, manaCost: 0,
+            isQuickCast: true, isPassive: true, noSave: true, isAoE: true,
+            hasAdvantage: false, causesParalysis: true, affectsMovement: false,
+            affectsObjects: false, producesLight: false, exchangesKnowledge: false
+        ),
+        Spell(
             id: "spare-the-dying", name: "Spare the Dying",
             description: "Keep a dying ally from death's door.",
             range: 1, offenseDie: 0, defenseDie: 1, manaCost: 0,
             isQuickCast: true, isPassive: false, noSave: true, isAoE: false,
             hasAdvantage: false, causesParalysis: false, affectsMovement: false,
-            affectsObjects: false, producesLight: false, exchangesKnowledge: false
-        ),
-        Spell(
-            id: "stealth", name: "Stealth",
-            description: "Disappear from nearby foes' view.",
-            range: 0, offenseDie: 0, defenseDie: 0, manaCost: 0,
-            isQuickCast: true, isPassive: true, noSave: true, isAoE: true,
-            hasAdvantage: false, causesParalysis: true, affectsMovement: false,
             affectsObjects: false, producesLight: false, exchangesKnowledge: false
         ),
         // Mana 1

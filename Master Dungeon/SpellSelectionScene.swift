@@ -35,7 +35,7 @@ class SpellSelectionScene: SKScene {
 
     private var headerHeight: CGFloat = 130
     private var footerHeight: CGFloat = 100
-    private var helpOverlay: SKNode?
+    private var backButton: SKNode?
 
     // MARK: - Scene Lifecycle
 
@@ -106,31 +106,31 @@ class SpellSelectionScene: SKScene {
         selectedLabel.fontSize = 14
         selectedLabel.fontColor = SKColor(white: 0.7, alpha: 1.0)
         selectedLabel.horizontalAlignmentMode = .right
-        selectedLabel.position = CGPoint(x: size.width - 70, y: size.height - safeTop - 85)
+        selectedLabel.position = CGPoint(x: size.width - 20, y: size.height - safeTop - 85)
         selectedLabel.zPosition = 100
         updateSelectedLabel()
         addChild(selectedLabel)
 
-        // Help button (top right)
-        let helpButton = SKShapeNode(circleOfRadius: 18)
-        helpButton.fillColor = SKColor(white: 0.2, alpha: 0.9)
-        helpButton.strokeColor = SKColor(white: 0.5, alpha: 1.0)
-        helpButton.lineWidth = 2
-        helpButton.position = CGPoint(x: size.width - 30, y: size.height - safeTop - 50)
-        helpButton.zPosition = 100
-        helpButton.name = "helpButton"
-        addChild(helpButton)
+        // Back button (top left)
+        let backContainer = SKNode()
+        backContainer.position = CGPoint(x: 50, y: size.height - safeTop - 35)
+        backContainer.zPosition = 100
 
-        let helpLabel = SKLabelNode(fontNamed: "Cochin-Bold")
-        helpLabel.text = "?"
-        helpLabel.fontSize = 20
-        helpLabel.fontColor = .white
-        helpLabel.verticalAlignmentMode = .center
-        helpLabel.horizontalAlignmentMode = .center
-        helpLabel.position = helpButton.position
-        helpLabel.zPosition = 101
-        helpLabel.name = "helpButton"
-        addChild(helpLabel)
+        let backBg = SKShapeNode(rectOf: CGSize(width: 70, height: 30), cornerRadius: 8)
+        backBg.fillColor = SKColor(white: 0.2, alpha: 0.8)
+        backBg.strokeColor = SKColor(white: 0.4, alpha: 1.0)
+        backBg.lineWidth = 1
+        backContainer.addChild(backBg)
+
+        let backLabel = SKLabelNode(fontNamed: "Cochin")
+        backLabel.text = "← Back"
+        backLabel.fontSize = 14
+        backLabel.fontColor = .white
+        backLabel.verticalAlignmentMode = .center
+        backContainer.addChild(backLabel)
+
+        addChild(backContainer)
+        backButton = backContainer
 
         headerHeight = safeTop + 100
 
@@ -286,17 +286,14 @@ class SpellSelectionScene: SKScene {
 
         let location = touch.location(in: self)
 
-        // Check if help overlay is showing - any tap dismisses it
-        if helpOverlay != nil {
-            hideHelp()
-            return
-        }
-
-        // Check help button
-        let helpBounds = CGRect(x: size.width - 50, y: size.height - (view?.safeAreaInsets.top ?? 0) - 70, width: 40, height: 40)
-        if helpBounds.contains(location) {
-            showHelp()
-            return
+        // Check back button
+        if let back = backButton {
+            let backLocation = touch.location(in: back)
+            let backBounds = CGRect(x: -40, y: -20, width: 80, height: 40)
+            if backBounds.contains(backLocation) {
+                returnToMainMenu()
+                return
+            }
         }
 
         // Check start button (simple bounds check)
@@ -376,6 +373,13 @@ class SpellSelectionScene: SKScene {
         }
     }
 
+    private func returnToMainMenu() {
+        let menuScene = MainMenuScene(size: size)
+        menuScene.scaleMode = scaleMode
+        let transition = SKTransition.fade(withDuration: 0.5)
+        view?.presentScene(menuScene, transition: transition)
+    }
+
     private func startGame() {
         // Store loadout in game manager
         GameManager.shared.currentLoadout = loadout
@@ -388,97 +392,6 @@ class SpellSelectionScene: SKScene {
         view?.presentScene(gameScene, transition: transition)
     }
 
-    // MARK: - Help Overlay
-
-    private func showHelp() {
-        guard helpOverlay == nil else { return }
-
-        let overlay = SKNode()
-        overlay.zPosition = 500
-
-        // Dimmed background
-        let dimmer = SKShapeNode(rectOf: CGSize(width: size.width, height: size.height))
-        dimmer.fillColor = SKColor(white: 0, alpha: 0.85)
-        dimmer.strokeColor = .clear
-        dimmer.position = CGPoint(x: size.width / 2, y: size.height / 2)
-        overlay.addChild(dimmer)
-
-        // Help panel
-        let panelWidth = min(size.width - 40, 350)
-        let panelHeight = min(size.height - 100, 500)
-        let panel = SKShapeNode(rectOf: CGSize(width: panelWidth, height: panelHeight), cornerRadius: 16)
-        panel.fillColor = SKColor(white: 0.15, alpha: 1.0)
-        panel.strokeColor = SKColor(white: 0.4, alpha: 1.0)
-        panel.lineWidth = 2
-        panel.position = CGPoint(x: size.width / 2, y: size.height / 2)
-        overlay.addChild(panel)
-
-        // Title
-        let title = SKLabelNode(fontNamed: "Cochin-Bold")
-        title.text = "How to Play"
-        title.fontSize = 22
-        title.fontColor = .white
-        title.position = CGPoint(x: size.width / 2, y: size.height / 2 + panelHeight / 2 - 35)
-        overlay.addChild(title)
-
-        // Instructions text
-        let instructions = """
-        SELECT SPELLS
-        Choose up to 3 spells. Pass is always
-        available and restores all your mana.
-
-        MOVEMENT
-        Tap a hex to walk there. You can only
-        move to adjacent hexes each step.
-
-        CASTING SPELLS
-        Tap a spell, then tap a target hex.
-        Range 0 spells cast on yourself.
-
-        COMBAT
-        Defeat enemies by casting offensive
-        spells at them. Red = damage dealers.
-
-        SURVIVAL
-        Green spells heal. Keep your HP up!
-        Hearts show health, crystals show mana.
-
-        CHALLENGES
-        Complete objectives shown at the top.
-        Each challenge tests different skills.
-
-        Tap anywhere to close
-        """
-
-        let helpText = SKLabelNode(fontNamed: "Cochin")
-        helpText.text = instructions
-        helpText.fontSize = 13
-        helpText.fontColor = SKColor(white: 0.9, alpha: 1.0)
-        helpText.numberOfLines = 0
-        helpText.preferredMaxLayoutWidth = panelWidth - 30
-        helpText.lineBreakMode = .byWordWrapping
-        helpText.verticalAlignmentMode = .top
-        helpText.horizontalAlignmentMode = .center
-        helpText.position = CGPoint(x: size.width / 2, y: size.height / 2 + panelHeight / 2 - 60)
-        overlay.addChild(helpText)
-
-        addChild(overlay)
-        helpOverlay = overlay
-
-        // Fade in
-        overlay.alpha = 0
-        overlay.run(SKAction.fadeIn(withDuration: 0.2))
-    }
-
-    private func hideHelp() {
-        guard let overlay = helpOverlay else { return }
-
-        overlay.run(SKAction.sequence([
-            SKAction.fadeOut(withDuration: 0.15),
-            SKAction.removeFromParent()
-        ]))
-        helpOverlay = nil
-    }
 }
 
 // MARK: - Spell Card

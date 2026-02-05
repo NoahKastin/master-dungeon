@@ -18,8 +18,8 @@ class GameViewController: UIViewController {
             fatalError("View is not an SKView")
         }
 
-        // Start with spell selection scene
-        let scene = SpellSelectionScene(size: view.bounds.size)
+        // Start with main menu scene
+        let scene = MainMenuScene(size: view.bounds.size)
         scene.scaleMode = .aspectFill
 
         view.presentScene(scene)
