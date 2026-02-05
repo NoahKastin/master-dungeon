@@ -7,10 +7,18 @@
 
 import Foundation
 
+enum GameMode {
+    case normal
+    case hardcore
+}
+
 class GameManager {
     static let shared = GameManager()
 
     private init() {}
+
+    // Game mode
+    var gameMode: GameMode = .normal
 
     // Current loadout selected by player
     var currentLoadout: SpellLoadout = SpellLoadout()
@@ -24,6 +32,7 @@ class GameManager {
     var playerLoadouts: [Int: SpellLoadout] = [:]
 
     func reset() {
+        gameMode = .normal
         currentLoadout = SpellLoadout()
         challengesCompleted = 0
         totalDamageDealt = 0

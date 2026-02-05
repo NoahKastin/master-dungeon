@@ -10,7 +10,7 @@ import GameplayKit
 
 class Player: GKEntity {
     // MARK: - Constants
-    static let maxHP = 4
+    static var maxHP: Int { GameManager.shared.gameMode == .hardcore ? 1 : 4 }
     static let maxMana = 4
 
     // MARK: - State

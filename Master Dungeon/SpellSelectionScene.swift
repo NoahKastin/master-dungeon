@@ -181,7 +181,14 @@ class SpellSelectionScene: SKScene {
     private func setupSpellGrid() {
         // Put Pass first, then other spells sorted by mana cost
         var spells = [SpellData.passSpell]
-        spells.append(contentsOf: SpellData.allSpells.filter { $0.id != "pass" }.sorted { $0.manaCost < $1.manaCost })
+        let hardcoreSpellIDs: Set<String> = [
+            "shocking-grasp", "burning-hands", "magic-missile",
+            "acid-splash", "chill-touch", "sleet-storm"
+        ]
+        let availableSpells = SpellData.allSpells.filter { spell in
+            spell.id != "pass" && (GameManager.shared.gameMode != .hardcore || hardcoreSpellIDs.contains(spell.id))
+        }
+        spells.append(contentsOf: availableSpells.sorted { $0.manaCost < $1.manaCost })
 
         let scrollAreaHeight = size.height - headerHeight - footerHeight
 

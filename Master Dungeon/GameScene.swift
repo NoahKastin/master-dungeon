@@ -398,7 +398,7 @@ class GameScene: SKScene {
         if let challenge = currentChallenge {
             // Set up timed challenge timer
             if challenge.type == .timed {
-                challengeTimeLimit = 15.0  // 15 second timer
+                challengeTimeLimit = GameManager.shared.gameMode == .hardcore ? 5.0 : 15.0
             }
 
             for element in challenge.elements {

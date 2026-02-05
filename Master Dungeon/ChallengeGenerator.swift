@@ -561,7 +561,7 @@ class ChallengeGenerator {
                 let rangedPos = randomPosition(minDistance: 3, maxDistance: 3, avoiding: usedPositions)
                 usedPositions.insert(rangedPos)
                 elements.append(ChallengeElement(
-                    type: .enemy(hp: 2 + difficulty, damage: 1, behavior: .ranged),
+                    type: .enemy(hp: GameManager.shared.gameMode == .hardcore ? 1 : 2 + difficulty, damage: 1, behavior: .ranged),
                     position: rangedPos,
                     properties: [:]
                 ))

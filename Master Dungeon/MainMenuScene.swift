@@ -12,6 +12,7 @@ class MainMenuScene: SKScene {
     // MARK: - Properties
     private var helpOverlay: SKNode?
     private var normalButton: SKShapeNode!
+    private var hardcoreButton: SKShapeNode!
     private var howToPlayButton: SKShapeNode!
 
     // MARK: - Scene Lifecycle
@@ -56,12 +57,30 @@ class MainMenuScene: SKScene {
         normalLabel.zPosition = 11
         addChild(normalLabel)
 
+        // "Hardcore" button (primary green, same style as Normal)
+        hardcoreButton = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 12)
+        hardcoreButton.fillColor = SKColor(red: 0.6, green: 0.2, blue: 0.2, alpha: 1.0)
+        hardcoreButton.strokeColor = SKColor(red: 0.8, green: 0.3, blue: 0.3, alpha: 1.0)
+        hardcoreButton.lineWidth = 2
+        hardcoreButton.position = CGPoint(x: size.width / 2, y: buttonCenterY - 70)
+        hardcoreButton.zPosition = 10
+        addChild(hardcoreButton)
+
+        let hardcoreLabel = SKLabelNode(fontNamed: "Cochin-Bold")
+        hardcoreLabel.text = "Hardcore"
+        hardcoreLabel.fontSize = 18
+        hardcoreLabel.fontColor = .white
+        hardcoreLabel.verticalAlignmentMode = .center
+        hardcoreLabel.position = hardcoreButton.position
+        hardcoreLabel.zPosition = 11
+        addChild(hardcoreLabel)
+
         // "How to Play" button (secondary gray)
         howToPlayButton = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 12)
         howToPlayButton.fillColor = SKColor(white: 0.2, alpha: 0.8)
         howToPlayButton.strokeColor = SKColor(white: 0.4, alpha: 1.0)
         howToPlayButton.lineWidth = 2
-        howToPlayButton.position = CGPoint(x: size.width / 2, y: buttonCenterY - 70)
+        howToPlayButton.position = CGPoint(x: size.width / 2, y: buttonCenterY - 140)
         howToPlayButton.zPosition = 10
         addChild(howToPlayButton)
 
@@ -99,6 +118,18 @@ class MainMenuScene: SKScene {
             return
         }
 
+        // Check "Hardcore" button
+        let hardcoreBounds = CGRect(
+            x: hardcoreButton.position.x - 100,
+            y: hardcoreButton.position.y - 25,
+            width: 200,
+            height: 50
+        )
+        if hardcoreBounds.contains(location) {
+            startHardcoreMode()
+            return
+        }
+
         // Check "How to Play" button
         let helpBounds = CGRect(
             x: howToPlayButton.position.x - 100,
@@ -115,6 +146,15 @@ class MainMenuScene: SKScene {
     // MARK: - Navigation
 
     private func startNormalMode() {
+        GameManager.shared.gameMode = .normal
+        let spellScene = SpellSelectionScene(size: size)
+        spellScene.scaleMode = scaleMode
+        let transition = SKTransition.fade(withDuration: 0.5)
+        view?.presentScene(spellScene, transition: transition)
+    }
+
+    private func startHardcoreMode() {
+        GameManager.shared.gameMode = .hardcore
         let spellScene = SpellSelectionScene(size: size)
         spellScene.scaleMode = scaleMode
         let transition = SKTransition.fade(withDuration: 0.5)
