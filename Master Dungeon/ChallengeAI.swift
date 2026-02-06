@@ -258,7 +258,7 @@ class ChallengeAI {
                 let rangedPos = randomValidPosition(minDist: 3, maxDist: 3, avoiding: usedPositions)
                 usedPositions.insert(rangedPos)
                 elements.append(ChallengeElement(
-                    type: .enemy(hp: 2 + difficulty, damage: 1, behavior: .ranged),
+                    type: .enemy(hp: GameManager.shared.gameMode == .hardcore ? 1 : 2 + difficulty, damage: 1, behavior: .ranged),
                     position: rangedPos,
                     properties: [:]
                 ))
@@ -1033,7 +1033,7 @@ class ChallengeAI {
                 if Bool.random() {
                     print("FALLBACK DEBUG: Spawning ranged enemy challenge")
                     elements.append(ChallengeElement(
-                        type: .enemy(hp: 3, damage: 1, behavior: .ranged),
+                        type: .enemy(hp: GameManager.shared.gameMode == .hardcore ? 1 : 3, damage: 1, behavior: .ranged),
                         position: HexCoord(q: 3, r: 0),
                         properties: [:]
                     ))

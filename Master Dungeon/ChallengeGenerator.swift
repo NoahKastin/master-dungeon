@@ -204,12 +204,14 @@ class ChallengeGenerator {
             }
         }
 
-        // Obstacle - need damage OR mobility
-        if analysis.hasMobility {
-            weights[.obstacle, default: 0] += 3
-        }
-        if hasDamage {
-            weights[.obstacle, default: 0] += 2  // Can destroy obstacles
+        // Obstacle - need damage OR mobility (skip in hardcore)
+        if GameManager.shared.gameMode != .hardcore {
+            if analysis.hasMobility {
+                weights[.obstacle, default: 0] += 3
+            }
+            if hasDamage {
+                weights[.obstacle, default: 0] += 2  // Can destroy obstacles
+            }
         }
 
         // Puzzle - need illumination or object manipulation
@@ -229,19 +231,23 @@ class ChallengeGenerator {
             weights[.stealth, default: 0] += 1  // Can still sneak around
         }
 
-        // Timed - just need to reach targets (always possible)
-        weights[.timed, default: 0] += 2
-        if analysis.hasMobility {
-            weights[.timed, default: 0] += 1  // Faster movement helps
+        // Timed - just need to reach targets (skip in hardcore, stealth has timer instead)
+        if GameManager.shared.gameMode != .hardcore {
+            weights[.timed, default: 0] += 2
+            if analysis.hasMobility {
+                weights[.timed, default: 0] += 1  // Faster movement helps
+            }
         }
 
         // Ensure at least one challenge type is possible
-        // If no weights set, add rescue if healing, otherwise timed (always winnable)
+        // If no weights set, add rescue if healing, otherwise timed/stealth (always winnable)
         if weights.isEmpty || weights.values.reduce(0, +) == 0 {
             if analysis.hasHealing {
                 weights[.rescue] = 3
             }
-            weights[.timed, default: 0] += 3  // Can always reach a target
+            if GameManager.shared.gameMode != .hardcore {
+                weights[.timed, default: 0] += 3  // Can always reach a target
+            }
             weights[.stealth, default: 0] += 2  // Can always sneak
         }
 
@@ -252,8 +258,9 @@ class ChallengeGenerator {
 
         // Weighted random selection
         let totalWeight = weights.values.reduce(0, +)
+        let fallback: ChallengeType = GameManager.shared.gameMode == .hardcore ? .stealth : .timed
         guard totalWeight > 0 else {
-            return analysis.hasHealing ? .rescue : .timed  // Safe fallback
+            return analysis.hasHealing ? .rescue : fallback  // Safe fallback
         }
 
         var roll = randomSource.nextInt(upperBound: totalWeight)
@@ -265,7 +272,7 @@ class ChallengeGenerator {
             }
         }
 
-        return analysis.hasHealing ? .rescue : .timed  // Safe fallback
+        return analysis.hasHealing ? .rescue : fallback  // Safe fallback
     }
 
     // MARK: - Scenario Creation

@@ -396,8 +396,8 @@ class GameScene: SKScene {
         challengeHadEnemies = false  // Reset for new challenge
 
         if let challenge = currentChallenge {
-            // Set up timed challenge timer
-            if challenge.type == .timed {
+            // Set up timed challenge timer (in hardcore, stealth challenges also have a timer)
+            if challenge.type == .timed || (challenge.type == .stealth && GameManager.shared.gameMode == .hardcore) {
                 challengeTimeLimit = GameManager.shared.gameMode == .hardcore ? 5.0 : 15.0
             }
 
@@ -1338,10 +1338,23 @@ class GameScene: SKScene {
 
         case .stealth:
             // Stealth challenges complete when player reaches target without detection
+            // In hardcore, also fail if time runs out
+            if GameManager.shared.gameMode == .hardcore && challengeTimeLimit > 0 && challengeTimer >= challengeTimeLimit {
+                showStatusText("Time's up!", at: CGPoint(x: size.width / 2, y: size.height / 2), color: .red)
+                player.takeDamage(1)
+                if !player.isAlive { showGameOver(); return }
+                challengeCompleted = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                    self?.challengeCompleted = false
+                    self?.generateNewChallenge()
+                }
+                return
+            }
             // Fail if player was detected — lose 1 HP and advance
             if playerDetected {
                 showStatusText("Detected!", at: CGPoint(x: size.width / 2, y: size.height / 2), color: .red)
                 player.takeDamage(1)
+                if !player.isAlive { showGameOver(); return }
                 challengeCompleted = true
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
                     self?.challengeCompleted = false
@@ -1361,6 +1374,7 @@ class GameScene: SKScene {
             if challengeTimeLimit > 0 && challengeTimer >= challengeTimeLimit {
                 showStatusText("Time's up!", at: CGPoint(x: size.width / 2, y: size.height / 2), color: .red)
                 player.takeDamage(1)  // Penalty for failure
+                if !player.isAlive { showGameOver(); return }
                 challengeCompleted = true
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
                     self?.challengeCompleted = false
@@ -1665,8 +1679,9 @@ class GameScene: SKScene {
         // Update spell bar (for mana costs, etc.)
         spellBar?.updateSpellStates(currentMana: player.mana)
 
-        // Update challenge timer for timed challenges
-        if currentChallenge?.type == .timed && challengeTimeLimit > 0 && !challengeCompleted {
+        // Update challenge timer for timed challenges (and stealth in hardcore)
+        let isTimed = currentChallenge?.type == .timed || (currentChallenge?.type == .stealth && GameManager.shared.gameMode == .hardcore)
+        if isTimed && challengeTimeLimit > 0 && !challengeCompleted {
             challengeTimer += dt
             let remaining = max(0, challengeTimeLimit - challengeTimer)
             objectiveLabel?.text = String(format: "Time: %.1fs", remaining)
