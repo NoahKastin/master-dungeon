@@ -99,7 +99,7 @@ struct SpellData {
         // Mana 4
         Spell(
             id: "acid-splash", name: "Acid Splash",
-            description: "Hurl a volatile bubble of acid.",
+            description: "Hurl a brittle vial of explosive acid.",
             range: 2, offenseDie: 3, defenseDie: 0, manaCost: 4,
             isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
             hasAdvantage: false, causesParalysis: false, affectsMovement: false,

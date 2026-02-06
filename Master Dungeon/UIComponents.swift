@@ -406,12 +406,23 @@ struct SpellIcons {
             path.addLine(to: CGPoint(x: s * 0.5, y: s * 0.5))
 
         case "acid-splash":
-            // Droplet
-            path.move(to: CGPoint(x: 0, y: s))
-            path.addCurve(to: CGPoint(x: -s * 0.6, y: -s * 0.3), control1: CGPoint(x: -s * 0.8, y: s * 0.2), control2: CGPoint(x: -s * 0.8, y: -s * 0.1))
-            path.addCurve(to: CGPoint(x: 0, y: -s), control1: CGPoint(x: -s * 0.6, y: -s * 0.7), control2: CGPoint(x: -s * 0.3, y: -s))
-            path.addCurve(to: CGPoint(x: s * 0.6, y: -s * 0.3), control1: CGPoint(x: s * 0.3, y: -s), control2: CGPoint(x: s * 0.6, y: -s * 0.7))
-            path.addCurve(to: CGPoint(x: 0, y: s), control1: CGPoint(x: s * 0.8, y: -s * 0.1), control2: CGPoint(x: s * 0.8, y: s * 0.2))
+            // Tipped vial pouring acid (sealed end upper-left, opening lower-right)
+            // Upper wall: opening edge → neck/body junction → sealed end
+            path.move(to: CGPoint(x: s * 0.43, y: -s * 0.22))
+            path.addLine(to: CGPoint(x: s * 0.25, y: s * 0.05))
+            path.addLine(to: CGPoint(x: -s * 0.2, y: s * 0.55))
+            // Sealed end (rounded curve to lower wall)
+            path.addCurve(to: CGPoint(x: -s * 0.45, y: s * 0.3),
+                          control1: CGPoint(x: -s * 0.35, y: s * 0.7),
+                          control2: CGPoint(x: -s * 0.55, y: s * 0.5))
+            // Lower wall: sealed end → neck/body junction → opening edge
+            path.addLine(to: CGPoint(x: 0, y: -s * 0.2))
+            path.addLine(to: CGPoint(x: s * 0.25, y: -s * 0.4))
+            // Acid drops falling from opening
+            path.move(to: CGPoint(x: s * 0.4, y: -s * 0.48))
+            path.addLine(to: CGPoint(x: s * 0.47, y: -s * 0.65))
+            path.move(to: CGPoint(x: s * 0.52, y: -s * 0.75))
+            path.addLine(to: CGPoint(x: s * 0.55, y: -s * 0.87))
 
         case "burning-hands":
             // Flame
