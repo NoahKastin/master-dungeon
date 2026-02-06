@@ -201,16 +201,16 @@ class MainMenuScene: SKScene {
         available and restores all your mana.
 
         MOVEMENT
-        Tap a hex to walk there. You can only
-        move to adjacent hexes each step.
+        Tap a hex to walk there.
+        Walking is critical to success!
 
         CASTING SPELLS
         Tap a spell, then tap a target hex.
         Range 0 spells cast on yourself.
 
         COMBAT
-        Defeat enemies by casting offensive
-        spells at them. Red = damage dealers.
+        Defeat enemies (triangles) by casting
+        offensive (red) spells at them.
 
         SURVIVAL
         Green spells heal. Keep your HP up!

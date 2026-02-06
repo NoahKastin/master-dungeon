@@ -158,7 +158,7 @@ class Enemy: GKEntity {
         let preferredRange = 3
 
         // Attack from range if possible
-        if distance <= 4 && distance >= 2 {
+        if distance <= 3 && distance >= 2 {
             return .attack(target: playerPosition, damage: damage)
         }
 
@@ -172,7 +172,7 @@ class Enemy: GKEntity {
         }
 
         // If too far, approach
-        if distance > 4 {
+        if distance > 3 {
             if let path = HexPathfinder.findPath(from: position, to: playerPosition, blocked: blocked),
                path.count > 1 {
                 let nextPos = path[1]

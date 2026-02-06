@@ -267,6 +267,21 @@ class SpellBar: SKNode {
         }
     }
 
+    func spellAt(point: CGPoint) -> Spell? {
+        for (index, slot) in spellSlots.enumerated() {
+            let slotFrame = CGRect(
+                x: slot.position.x - slotSize / 2,
+                y: slot.position.y - slotSize / 2,
+                width: slotSize,
+                height: slotSize
+            )
+            if slotFrame.contains(point) {
+                return spells[index]
+            }
+        }
+        return nil
+    }
+
     func deselectAll() {
         selectedIndex = nil
         for slot in spellSlots {
@@ -550,12 +565,16 @@ class SpellSlot: SKNode {
     }
 
     private static func spellColor(for spell: Spell) -> SKColor {
-        if spell.isOffensive {
-            return SKColor(red: 1.0, green: 0.4, blue: 0.3, alpha: 1.0)
+        if spell.isOffensive && spell.isDefensive {
+            return SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 1.0)  // Gold - hybrid
+        } else if spell.isOffensive && spell.causesParalysis {
+            return SKColor(red: 0.7, green: 0.3, blue: 0.9, alpha: 1.0)  // Purple - damage + control
+        } else if spell.isOffensive {
+            return SKColor(red: 1.0, green: 0.4, blue: 0.3, alpha: 1.0)  // Red - damage
         } else if spell.isDefensive {
-            return SKColor(red: 0.3, green: 1.0, blue: 0.4, alpha: 1.0)
+            return SKColor(red: 0.3, green: 1.0, blue: 0.4, alpha: 1.0)  // Green - healing
         } else {
-            return SKColor(red: 0.4, green: 0.7, blue: 1.0, alpha: 1.0)
+            return SKColor(red: 0.4, green: 0.7, blue: 1.0, alpha: 1.0)  // Blue - utility
         }
     }
 

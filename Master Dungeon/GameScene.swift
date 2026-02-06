@@ -83,6 +83,11 @@ class GameScene: SKScene {
     private var movementTimer: TimeInterval = 0
     private let movementInterval: TimeInterval = 0.15
 
+    // MARK: - Long-press Spell Tooltip
+    private var spellBarTouchPoint: CGPoint?
+    private var longPressWork: DispatchWorkItem?
+    private var spellTooltip: SKNode?
+
     // MARK: - Scene Lifecycle
 
     override func sceneDidLoad() {
@@ -710,16 +715,37 @@ class GameScene: SKScene {
 
     private func createTargetSprite() -> SKNode {
         let container = SKNode()
-        let size = hexSize * 0.3
+        let size = hexSize * 0.35
 
-        // Target rings
-        for i in 0..<3 {
-            let ring = SKShapeNode(circleOfRadius: size - CGFloat(i) * 6)
-            ring.fillColor = i % 2 == 0 ? SKColor(red: 1.0, green: 0.8, blue: 0.0, alpha: 0.8) : .clear
-            ring.strokeColor = SKColor(red: 0.8, green: 0.6, blue: 0.0, alpha: 1.0)
-            ring.lineWidth = 1
-            container.addChild(ring)
+        // Checkered flag
+        let flagWidth = size * 2
+        let flagHeight = size * 1.5
+        let cols = 4
+        let rows = 3
+        let cellW = flagWidth / CGFloat(cols)
+        let cellH = flagHeight / CGFloat(rows)
+
+        for row in 0..<rows {
+            for col in 0..<cols {
+                let cell = SKShapeNode(rectOf: CGSize(width: cellW, height: cellH))
+                cell.position = CGPoint(
+                    x: -flagWidth / 2 + cellW * (CGFloat(col) + 0.5),
+                    y: -flagHeight / 2 + cellH * (CGFloat(row) + 0.5)
+                )
+                cell.fillColor = (row + col) % 2 == 0 ? .white : .black
+                cell.strokeColor = .clear
+                cell.lineWidth = 0
+                cell.alpha = 0.85
+                container.addChild(cell)
+            }
         }
+
+        // Border around the flag
+        let border = SKShapeNode(rectOf: CGSize(width: flagWidth, height: flagHeight))
+        border.fillColor = .clear
+        border.strokeColor = SKColor(white: 0.7, alpha: 0.9)
+        border.lineWidth = 1
+        container.addChild(border)
 
         return container
     }
@@ -780,12 +806,20 @@ class GameScene: SKScene {
             }
         }
 
-        // Check if touch is on UI (spell bar)
+        // Check if touch is on UI (spell bar) — defer to touchesEnded for tap vs long-press
         if let bar = spellBar {
-            // Convert touch to spellBar's local coordinate system
             let barLocation = touch.location(in: bar)
             if bar.contains(barLocation) {
-                bar.handleTouch(at: barLocation)
+                spellBarTouchPoint = barLocation
+                let work = DispatchWorkItem { [weak self] in
+                    guard let self = self else { return }
+                    if let spell = self.spellBar?.spellAt(point: barLocation) {
+                        self.showSpellTooltip(spell)
+                    }
+                    self.spellBarTouchPoint = nil
+                }
+                longPressWork = work
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: work)
                 return
             }
         }
@@ -805,6 +839,32 @@ class GameScene: SKScene {
         let worldCoord = localHexCoord + player.position
 
         handleHexTap(worldCoord)
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+        // Cancel any pending long-press
+        longPressWork?.cancel()
+        longPressWork = nil
+
+        // If tooltip is showing, dismiss it
+        if spellTooltip != nil {
+            dismissSpellTooltip()
+            spellBarTouchPoint = nil
+            return
+        }
+
+        // If we had a pending spell bar tap (finger lifted before long-press fired), handle as normal tap
+        if let point = spellBarTouchPoint {
+            spellBar?.handleTouch(at: point)
+            spellBarTouchPoint = nil
+        }
+    }
+
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        longPressWork?.cancel()
+        longPressWork = nil
+        dismissSpellTooltip()
+        spellBarTouchPoint = nil
     }
 
     private func returnToSpellSelection() {
@@ -908,6 +968,14 @@ class GameScene: SKScene {
                 player.heal(healing)
                 let playerScreenPos = CGPoint(x: size.width / 2, y: size.height / 2)
                 showHealingNumber(healing, at: playerScreenPos)
+            } else if spell.isOffensive && blockedHexes.contains(coord) {
+                // Life steal off barrier (e.g. Life Transference hitting an obstacle)
+                let healing = spell.rollDefense()
+                player.heal(healing)
+                let playerScreenPos = CGPoint(x: size.width / 2, y: size.height / 2)
+                showHealingNumber(healing, at: playerScreenPos)
+                let screenPos = worldToScreen(coord)
+                showSpellFlash(color: .green, at: screenPos)
             } else if !spell.isOffensive {
                 // Pure healing spell - check for NPCs at target location first
                 if let healAmount = healNPCAt(coord, amount: spell.rollDefense()) {
@@ -1180,17 +1248,18 @@ class GameScene: SKScene {
             if !spell.isAoE {
                 showDamageNumber(amount, at: worldScreenPos)
             }
-            showSpellFlash(color: .red, at: worldScreenPos)
+            showSpellIconAnimation(spell: spell, at: worldScreenPos)
 
         case .healing(let amount):
             // Show healing at player position
             let playerScreenPos = CGPoint(x: size.width / 2, y: size.height / 2)
             showHealingNumber(amount, at: playerScreenPos)
-            showSpellFlash(color: .green, at: playerScreenPos)
+            showSpellIconAnimation(spell: spell, at: playerScreenPos)
 
         case .activatedPassive:
             let playerScreenPos = CGPoint(x: size.width / 2, y: size.height / 2)
             showStatusText("Activated!", at: playerScreenPos, color: .cyan)
+            showSpellIconAnimation(spell: spell, at: playerScreenPos)
 
         case .deactivatedPassive:
             let playerScreenPos = CGPoint(x: size.width / 2, y: size.height / 2)
@@ -1198,12 +1267,13 @@ class GameScene: SKScene {
 
         case .areaEffect(let center, let radius, _):
             let affectedHexes = center.hexesInRange(radius)
-            for hex in affectedHexes {
+            showSpellIconAnimation(spell: spell, at: worldToScreen(center))
+            for hex in affectedHexes where hex != center {
                 showSpellFlash(color: .orange, at: worldToScreen(hex))
             }
 
         default:
-            showSpellFlash(color: .white, at: worldScreenPos)
+            showSpellIconAnimation(spell: spell, at: worldScreenPos)
         }
 
         // Trigger enemy turns after casting a non-passive spell
@@ -1248,6 +1318,47 @@ class GameScene: SKScene {
         label.run(SKAction.sequence([group, remove]))
     }
 
+    private func showSpellIconAnimation(spell: Spell, at position: CGPoint) {
+        // Determine color based on spell type
+        let color: SKColor
+        if spell.isOffensive && spell.isDefensive {
+            color = SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 1.0)  // Gold - hybrid
+        } else if spell.isOffensive && spell.causesParalysis {
+            color = SKColor(red: 0.7, green: 0.3, blue: 0.9, alpha: 1.0)  // Purple - damage + control
+        } else if spell.isOffensive {
+            color = SKColor(red: 1.0, green: 0.4, blue: 0.3, alpha: 1.0)  // Red - damage
+        } else if spell.isDefensive {
+            color = SKColor(red: 0.3, green: 1.0, blue: 0.4, alpha: 1.0)  // Green - healing
+        } else {
+            color = SKColor(red: 0.4, green: 0.7, blue: 1.0, alpha: 1.0)  // Blue - utility
+        }
+
+        let icon = SpellIcons.createIcon(for: spell.id, size: 30, color: color)
+        icon.position = position
+        icon.zPosition = 48
+        icon.setScale(0.5)
+
+        // Subtle glow behind icon
+        let glow = SKShapeNode(circleOfRadius: 18)
+        glow.fillColor = color.withAlphaComponent(0.3)
+        glow.strokeColor = .clear
+        glow.zPosition = -1
+        icon.addChild(glow)
+
+        effectLayer.addChild(icon)
+
+        let scaleUp = SKAction.scale(to: 1.5, duration: 0.15)
+        scaleUp.timingMode = .easeOut
+        let hold = SKAction.wait(forDuration: 0.25)
+        let fadeAndShrink = SKAction.group([
+            SKAction.fadeOut(withDuration: 0.4),
+            SKAction.scale(to: 1.0, duration: 0.4)
+        ])
+        let remove = SKAction.removeFromParent()
+
+        icon.run(SKAction.sequence([scaleUp, hold, fadeAndShrink, remove]))
+    }
+
     private func showSpellFlash(color: SKColor, at position: CGPoint) {
         let flash = SKShapeNode(circleOfRadius: 20)
         flash.fillColor = color
@@ -1280,6 +1391,117 @@ class GameScene: SKScene {
         let remove = SKAction.removeFromParent()
 
         label.run(SKAction.sequence([group, remove]))
+    }
+
+    // MARK: - Spell Tooltip
+
+    private func showSpellTooltip(_ spell: Spell) {
+        dismissSpellTooltip()
+
+        let tooltip = SKNode()
+        tooltip.zPosition = 150
+
+        // Build stats line
+        var statsText = "Range: \(spell.range)"
+        if spell.offenseDie > 0 {
+            statsText += "  Dmg: d\(spell.offenseDie)"
+        }
+        if spell.defenseDie > 0 {
+            statsText += "  Heal: d\(spell.defenseDie)"
+        }
+        if spell.isAoE {
+            statsText += "  AoE"
+        }
+        let manaText = spell.manaCost < 0 ? "Mana: +\(abs(spell.manaCost))" : "Mana: \(spell.manaCost)"
+
+        // Measure text to size the card
+        let padding: CGFloat = 12
+        let lineSpacing: CGFloat = 4
+        let nameFontSize: CGFloat = 16
+        let bodyFontSize: CGFloat = 12
+
+        // Create labels to measure
+        let nameLabel = SKLabelNode(fontNamed: "Cochin-Bold")
+        nameLabel.text = spell.name
+        nameLabel.fontSize = nameFontSize
+        nameLabel.fontColor = .white
+        nameLabel.horizontalAlignmentMode = .center
+        nameLabel.verticalAlignmentMode = .top
+
+        let descLabel = SKLabelNode(fontNamed: "Cochin")
+        descLabel.text = spell.description
+        descLabel.fontSize = bodyFontSize
+        descLabel.fontColor = SKColor(white: 0.85, alpha: 1.0)
+        descLabel.horizontalAlignmentMode = .center
+        descLabel.verticalAlignmentMode = .top
+
+        let statsLabel = SKLabelNode(fontNamed: "Cochin")
+        statsLabel.text = statsText
+        statsLabel.fontSize = bodyFontSize
+        statsLabel.fontColor = SKColor(white: 0.7, alpha: 1.0)
+        statsLabel.horizontalAlignmentMode = .center
+        statsLabel.verticalAlignmentMode = .top
+
+        let manaLabel = SKLabelNode(fontNamed: "Cochin-Bold")
+        manaLabel.text = manaText
+        manaLabel.fontSize = bodyFontSize
+        manaLabel.fontColor = spell.manaCost < 0
+            ? SKColor(red: 0.3, green: 0.8, blue: 0.3, alpha: 1.0)
+            : SKColor(red: 0.9, green: 0.5, blue: 0.3, alpha: 1.0)
+        manaLabel.horizontalAlignmentMode = .center
+        manaLabel.verticalAlignmentMode = .top
+
+        // Calculate card dimensions
+        let maxTextWidth = max(
+            nameLabel.frame.width,
+            max(descLabel.frame.width, max(statsLabel.frame.width, manaLabel.frame.width))
+        )
+        let cardWidth = maxTextWidth + padding * 2
+        let cardHeight = nameFontSize + bodyFontSize * 3 + lineSpacing * 4 + padding * 2
+
+        // Background card
+        let bg = SKShapeNode(rectOf: CGSize(width: cardWidth, height: cardHeight), cornerRadius: 8)
+        bg.fillColor = SKColor(white: 0.1, alpha: 0.95)
+        bg.strokeColor = SKColor(white: 0.4, alpha: 1.0)
+        bg.lineWidth = 1.5
+        tooltip.addChild(bg)
+
+        // Position labels inside card
+        var yPos = cardHeight / 2 - padding
+        nameLabel.position = CGPoint(x: 0, y: yPos)
+        tooltip.addChild(nameLabel)
+
+        yPos -= nameFontSize + lineSpacing
+        descLabel.position = CGPoint(x: 0, y: yPos)
+        tooltip.addChild(descLabel)
+
+        yPos -= bodyFontSize + lineSpacing
+        statsLabel.position = CGPoint(x: 0, y: yPos)
+        tooltip.addChild(statsLabel)
+
+        yPos -= bodyFontSize + lineSpacing
+        manaLabel.position = CGPoint(x: 0, y: yPos)
+        tooltip.addChild(manaLabel)
+
+        // Position tooltip above spell bar
+        let barY = spellBar?.position.y ?? 50
+        tooltip.position = CGPoint(x: size.width / 2, y: barY + 80)
+        tooltip.alpha = 0
+
+        uiLayer.addChild(tooltip)
+        spellTooltip = tooltip
+
+        // Fade in
+        tooltip.run(SKAction.fadeIn(withDuration: 0.15))
+    }
+
+    private func dismissSpellTooltip() {
+        guard let tooltip = spellTooltip else { return }
+        tooltip.run(SKAction.sequence([
+            SKAction.fadeOut(withDuration: 0.1),
+            SKAction.removeFromParent()
+        ]))
+        spellTooltip = nil
     }
 
     private func showCastError(_ error: SpellCastError) {

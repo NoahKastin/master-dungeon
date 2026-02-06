@@ -514,6 +514,8 @@ class SpellCard: SKNode {
     private static func cardBorderColor(for spell: Spell) -> SKColor {
         if spell.isOffensive && spell.isDefensive {
             return SKColor(red: 0.8, green: 0.6, blue: 0.2, alpha: 1.0)  // Gold - hybrid
+        } else if spell.isOffensive && spell.causesParalysis {
+            return SKColor(red: 0.5, green: 0.2, blue: 0.7, alpha: 1.0)  // Purple - damage + control
         } else if spell.isOffensive {
             return SKColor(red: 0.8, green: 0.3, blue: 0.2, alpha: 1.0)  // Red - damage
         } else if spell.isDefensive {

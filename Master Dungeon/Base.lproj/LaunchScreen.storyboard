@@ -16,7 +16,7 @@
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="window.shade.open" catalog="system" translatesAutoresizingMaskIntoConstraints="NO" id="sih-jK-PLa">
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="pedestrian.gate.closed" catalog="system" translatesAutoresizingMaskIntoConstraints="NO" id="sih-jK-PLa">
                                 <rect key="frame" x="96.666666666666671" y="176" width="200" height="200"/>
                                 <color key="tintColor" systemColor="systemMintColor"/>
                                 <constraints>
@@ -53,7 +53,7 @@
         </scene>
     </scenes>
     <resources>
-        <image name="window.shade.open" catalog="system" width="119" height="128"/>
+        <image name="pedestrian.gate.closed" catalog="system" width="119" height="128"/>
         <systemColor name="systemBackgroundColor">
             <color white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
         </systemColor>
