@@ -11,8 +11,10 @@ class MainMenuScene: SKScene {
 
     // MARK: - Properties
     private var helpOverlay: SKNode?
-    private var normalButton: SKShapeNode!
-    private var hardcoreButton: SKShapeNode!
+    private var easyButton: SKShapeNode!
+    private var mediumButton: SKShapeNode!
+    private var hardButton: SKShapeNode!
+    private var extremeButton: SKShapeNode!
     private var howToPlayButton: SKShapeNode!
 
     // MARK: - Scene Lifecycle
@@ -37,61 +39,102 @@ class MainMenuScene: SKScene {
         // Buttons
         let buttonWidth: CGFloat = 200
         let buttonHeight: CGFloat = 50
-        let buttonCenterY = size.height * 0.42
+        let buttonTopY = size.height * 0.55
+        let buttonSpacing: CGFloat = 60
 
-        // "Normal" button (primary green)
-        normalButton = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 12)
-        normalButton.fillColor = SKColor(red: 0.2, green: 0.6, blue: 0.3, alpha: 1.0)
-        normalButton.strokeColor = SKColor(red: 0.3, green: 0.8, blue: 0.4, alpha: 1.0)
-        normalButton.lineWidth = 2
-        normalButton.position = CGPoint(x: size.width / 2, y: buttonCenterY)
-        normalButton.zPosition = 10
-        addChild(normalButton)
+        // "Easy" button (blue, locked)
+        easyButton = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 12)
+        easyButton.fillColor = SKColor(red: 0.2, green: 0.4, blue: 0.7, alpha: 1.0)
+        easyButton.strokeColor = SKColor(red: 0.3, green: 0.5, blue: 0.9, alpha: 1.0)
+        easyButton.lineWidth = 2
+        easyButton.position = CGPoint(x: size.width / 2, y: buttonTopY)
+        easyButton.zPosition = 10
+        easyButton.alpha = 0.4
+        addChild(easyButton)
 
-        let normalLabel = SKLabelNode(fontNamed: "Cochin-Bold")
-        normalLabel.text = "Normal"
-        normalLabel.fontSize = 18
-        normalLabel.fontColor = .white
-        normalLabel.verticalAlignmentMode = .center
-        normalLabel.position = normalButton.position
-        normalLabel.zPosition = 11
-        addChild(normalLabel)
+        let easyLabel = SKLabelNode(fontNamed: "Cochin-Bold")
+        easyLabel.text = "Easy \u{1F512}"
+        easyLabel.fontSize = 18
+        easyLabel.fontColor = .white
+        easyLabel.verticalAlignmentMode = .center
+        easyLabel.position = easyButton.position
+        easyLabel.zPosition = 11
+        easyLabel.alpha = 0.4
+        addChild(easyLabel)
 
-        // "Hardcore" button (primary green, same style as Normal)
-        hardcoreButton = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 12)
-        hardcoreButton.fillColor = SKColor(red: 0.6, green: 0.2, blue: 0.2, alpha: 1.0)
-        hardcoreButton.strokeColor = SKColor(red: 0.8, green: 0.3, blue: 0.3, alpha: 1.0)
-        hardcoreButton.lineWidth = 2
-        hardcoreButton.position = CGPoint(x: size.width / 2, y: buttonCenterY - 70)
-        hardcoreButton.zPosition = 10
-        addChild(hardcoreButton)
+        // "Medium" button (green, locked)
+        mediumButton = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 12)
+        mediumButton.fillColor = SKColor(red: 0.2, green: 0.6, blue: 0.3, alpha: 1.0)
+        mediumButton.strokeColor = SKColor(red: 0.3, green: 0.8, blue: 0.4, alpha: 1.0)
+        mediumButton.lineWidth = 2
+        mediumButton.position = CGPoint(x: size.width / 2, y: buttonTopY - buttonSpacing)
+        mediumButton.zPosition = 10
+        mediumButton.alpha = 0.4
+        addChild(mediumButton)
 
-        let hardcoreLabel = SKLabelNode(fontNamed: "Cochin-Bold")
-        hardcoreLabel.text = "Hardcore"
-        hardcoreLabel.fontSize = 18
-        hardcoreLabel.fontColor = .white
-        hardcoreLabel.verticalAlignmentMode = .center
-        hardcoreLabel.position = hardcoreButton.position
-        hardcoreLabel.zPosition = 11
-        addChild(hardcoreLabel)
+        let mediumLabel = SKLabelNode(fontNamed: "Cochin-Bold")
+        mediumLabel.text = "Medium \u{1F512}"
+        mediumLabel.fontSize = 18
+        mediumLabel.fontColor = .white
+        mediumLabel.verticalAlignmentMode = .center
+        mediumLabel.position = mediumButton.position
+        mediumLabel.zPosition = 11
+        mediumLabel.alpha = 0.4
+        addChild(mediumLabel)
 
-        // "How to Play" button (secondary gray)
+        // "Hard" button (gold)
+        hardButton = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 12)
+        hardButton.fillColor = SKColor(red: 0.7, green: 0.55, blue: 0.15, alpha: 1.0)
+        hardButton.strokeColor = SKColor(red: 0.9, green: 0.75, blue: 0.25, alpha: 1.0)
+        hardButton.lineWidth = 2
+        hardButton.position = CGPoint(x: size.width / 2, y: buttonTopY - buttonSpacing * 2)
+        hardButton.zPosition = 10
+        addChild(hardButton)
+
+        let hardLabel = SKLabelNode(fontNamed: "Cochin-Bold")
+        hardLabel.text = "Hard"
+        hardLabel.fontSize = 18
+        hardLabel.fontColor = .white
+        hardLabel.verticalAlignmentMode = .center
+        hardLabel.position = hardButton.position
+        hardLabel.zPosition = 11
+        addChild(hardLabel)
+
+        // "Extreme" button (red)
+        extremeButton = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 12)
+        extremeButton.fillColor = SKColor(red: 0.6, green: 0.2, blue: 0.2, alpha: 1.0)
+        extremeButton.strokeColor = SKColor(red: 0.8, green: 0.3, blue: 0.3, alpha: 1.0)
+        extremeButton.lineWidth = 2
+        extremeButton.position = CGPoint(x: size.width / 2, y: buttonTopY - buttonSpacing * 3)
+        extremeButton.zPosition = 10
+        addChild(extremeButton)
+
+        let extremeLabel = SKLabelNode(fontNamed: "Cochin-Bold")
+        extremeLabel.text = "Extreme"
+        extremeLabel.fontSize = 18
+        extremeLabel.fontColor = .white
+        extremeLabel.verticalAlignmentMode = .center
+        extremeLabel.position = extremeButton.position
+        extremeLabel.zPosition = 11
+        addChild(extremeLabel)
+
+        // "Help" button (secondary gray)
         howToPlayButton = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 12)
         howToPlayButton.fillColor = SKColor(white: 0.2, alpha: 0.8)
         howToPlayButton.strokeColor = SKColor(white: 0.4, alpha: 1.0)
         howToPlayButton.lineWidth = 2
-        howToPlayButton.position = CGPoint(x: size.width / 2, y: buttonCenterY - 140)
+        howToPlayButton.position = CGPoint(x: size.width / 2, y: buttonTopY - buttonSpacing * 4)
         howToPlayButton.zPosition = 10
         addChild(howToPlayButton)
 
-        let howToPlayLabel = SKLabelNode(fontNamed: "Cochin-Bold")
-        howToPlayLabel.text = "How to Play"
-        howToPlayLabel.fontSize = 18
-        howToPlayLabel.fontColor = .white
-        howToPlayLabel.verticalAlignmentMode = .center
-        howToPlayLabel.position = howToPlayButton.position
-        howToPlayLabel.zPosition = 11
-        addChild(howToPlayLabel)
+        let helpLabel = SKLabelNode(fontNamed: "Cochin-Bold")
+        helpLabel.text = "Help"
+        helpLabel.fontSize = 18
+        helpLabel.fontColor = .white
+        helpLabel.verticalAlignmentMode = .center
+        helpLabel.position = howToPlayButton.position
+        helpLabel.zPosition = 11
+        addChild(helpLabel)
     }
 
     // MARK: - Touch Handling
@@ -106,31 +149,31 @@ class MainMenuScene: SKScene {
             return
         }
 
-        // Check "Normal" button
-        let normalBounds = CGRect(
-            x: normalButton.position.x - 100,
-            y: normalButton.position.y - 25,
+        // Check "Hard" button
+        let hardBounds = CGRect(
+            x: hardButton.position.x - 100,
+            y: hardButton.position.y - 25,
             width: 200,
             height: 50
         )
-        if normalBounds.contains(location) {
-            startNormalMode()
+        if hardBounds.contains(location) {
+            startHardMode()
             return
         }
 
-        // Check "Hardcore" button
-        let hardcoreBounds = CGRect(
-            x: hardcoreButton.position.x - 100,
-            y: hardcoreButton.position.y - 25,
+        // Check "Extreme" button
+        let extremeBounds = CGRect(
+            x: extremeButton.position.x - 100,
+            y: extremeButton.position.y - 25,
             width: 200,
             height: 50
         )
-        if hardcoreBounds.contains(location) {
-            startHardcoreMode()
+        if extremeBounds.contains(location) {
+            startExtremeMode()
             return
         }
 
-        // Check "How to Play" button
+        // Check "Help" button
         let helpBounds = CGRect(
             x: howToPlayButton.position.x - 100,
             y: howToPlayButton.position.y - 25,
@@ -145,7 +188,7 @@ class MainMenuScene: SKScene {
 
     // MARK: - Navigation
 
-    private func startNormalMode() {
+    private func startHardMode() {
         GameManager.shared.gameMode = .normal
         let spellScene = SpellSelectionScene(size: size)
         spellScene.scaleMode = scaleMode
@@ -153,7 +196,7 @@ class MainMenuScene: SKScene {
         view?.presentScene(spellScene, transition: transition)
     }
 
-    private func startHardcoreMode() {
+    private func startExtremeMode() {
         GameManager.shared.gameMode = .hardcore
         let spellScene = SpellSelectionScene(size: size)
         spellScene.scaleMode = scaleMode

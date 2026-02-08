@@ -231,13 +231,7 @@ class ChallengeGenerator {
             weights[.stealth, default: 0] += 1  // Can still sneak around
         }
 
-        // Timed - just need to reach targets (skip in hardcore, stealth has timer instead)
-        if GameManager.shared.gameMode != .hardcore {
-            weights[.timed, default: 0] += 2
-            if analysis.hasMobility {
-                weights[.timed, default: 0] += 1  // Faster movement helps
-            }
-        }
+        // Timed challenges are handled via stealth (stealth has a timer)
 
         // Ensure at least one challenge type is possible
         // If no weights set, add rescue if healing, otherwise timed/stealth (always winnable)
@@ -245,10 +239,7 @@ class ChallengeGenerator {
             if analysis.hasHealing {
                 weights[.rescue] = 3
             }
-            if GameManager.shared.gameMode != .hardcore {
-                weights[.timed, default: 0] += 3  // Can always reach a target
-            }
-            weights[.stealth, default: 0] += 2  // Can always sneak
+            weights[.stealth, default: 0] += 3  // Can always sneak (with timer)
         }
 
         // Reduce weight for recently used types (variety)
@@ -258,7 +249,7 @@ class ChallengeGenerator {
 
         // Weighted random selection
         let totalWeight = weights.values.reduce(0, +)
-        let fallback: ChallengeType = GameManager.shared.gameMode == .hardcore ? .stealth : .timed
+        let fallback: ChallengeType = .stealth
         guard totalWeight > 0 else {
             return analysis.hasHealing ? .rescue : fallback  // Safe fallback
         }

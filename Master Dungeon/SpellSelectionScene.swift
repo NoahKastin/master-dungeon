@@ -183,7 +183,7 @@ class SpellSelectionScene: SKScene {
         var spells = [SpellData.passSpell]
         let hardcoreSpellIDs: Set<String> = [
             "shocking-grasp", "burning-hands", "magic-missile",
-            "acid-splash", "chill-touch", "sleet-storm"
+            "acid-splash", "black-tentacles", "blight", "chill-touch", "sleet-storm"
         ]
         let availableSpells = SpellData.allSpells.filter { spell in
             spell.id != "pass" && (GameManager.shared.gameMode != .hardcore || hardcoreSpellIDs.contains(spell.id))

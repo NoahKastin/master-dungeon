@@ -303,7 +303,7 @@ class Enemy: GKEntity {
             .map { $0.behavior }
             .max { behaviorPriority($0) < behaviorPriority($1) } ?? .aggressive
 
-        return Enemy(
+        let merged = Enemy(
             hp: totalHP,
             maxHP: totalMaxHP,
             damage: maxDamage,
@@ -312,6 +312,14 @@ class Enemy: GKEntity {
             isMerged: true,
             mergeCount: enemies.reduce(0) { $0 + $1.mergeCount }
         )
+
+        // Preserve stun state: use the longest remaining stun from any source enemy
+        let maxStun = enemies.filter { $0.isStunned }.map { $0.stunTurnsRemaining }.max() ?? 0
+        if maxStun > 0 {
+            merged.stun(turns: maxStun)
+        }
+
+        return merged
     }
 }
 

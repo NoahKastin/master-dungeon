@@ -7,89 +7,98 @@
 
 import SpriteKit
 
-// MARK: - Mana Display (Discrete Crystals)
+// MARK: - Mana Display (Split Circle)
 
 class ManaDisplay: SKNode {
     private let maxMana = Player.maxMana
     private var currentMana = Player.maxMana
-    private var crystalNodes: [SKNode] = []
+    private var halfNodes: [SKNode] = []
 
-    private let crystalSize: CGFloat = 20
-    private let crystalSpacing: CGFloat = 4
+    private let circleRadius: CGFloat = 12
+    private let gapWidth: CGFloat = 3
 
     init(width: CGFloat = 0) {
-        // Width parameter kept for compatibility but not used (discrete crystals)
         super.init()
-        createCrystals()
+        createHalves()
     }
 
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
 
-    private func createCrystals() {
-        // Center-align: crystals centered around anchor point
-        let totalWidth = CGFloat(maxMana) * crystalSize + CGFloat(maxMana - 1) * crystalSpacing
-        let startX = -totalWidth / 2 + crystalSize / 2
+    private func createHalves() {
+        // Left half-circle (index 0) and right half-circle (index 1)
         for i in 0..<maxMana {
-            let crystal = createCrystalNode(filled: true)
-            crystal.position = CGPoint(x: startX + CGFloat(i) * (crystalSize + crystalSpacing), y: 0)
-            addChild(crystal)
-            crystalNodes.append(crystal)
+            let half = createHalfNode(index: i, filled: true)
+            addChild(half)
+            halfNodes.append(half)
         }
     }
 
-    private func createCrystalNode(filled: Bool) -> SKNode {
+    private func createHalfNode(index: Int, filled: Bool) -> SKNode {
         let container = SKNode()
+        let r = circleRadius
+        let halfGap = gapWidth / 2
 
-        // Diamond/crystal shape
-        let crystalPath = CGMutablePath()
-        let size = crystalSize / 2
+        let halfPath = CGMutablePath()
+        if index == 0 {
+            // Left semicircle: arc from top to bottom going through left
+            halfPath.move(to: CGPoint(x: -halfGap, y: r))
+            halfPath.addArc(center: CGPoint(x: -halfGap, y: 0), radius: r,
+                            startAngle: .pi / 2, endAngle: .pi * 3 / 2, clockwise: false)
+            halfPath.closeSubpath()
+            container.position = .zero
+        } else {
+            // Right semicircle: arc from bottom to top going through right
+            halfPath.move(to: CGPoint(x: halfGap, y: -r))
+            halfPath.addArc(center: CGPoint(x: halfGap, y: 0), radius: r,
+                            startAngle: -.pi / 2, endAngle: .pi / 2, clockwise: false)
+            halfPath.closeSubpath()
+            container.position = .zero
+        }
 
-        // Diamond shape pointing up
-        crystalPath.move(to: CGPoint(x: 0, y: size))           // Top
-        crystalPath.addLine(to: CGPoint(x: size * 0.7, y: 0))  // Right
-        crystalPath.addLine(to: CGPoint(x: 0, y: -size))       // Bottom
-        crystalPath.addLine(to: CGPoint(x: -size * 0.7, y: 0)) // Left
-        crystalPath.closeSubpath()
+        let shape = SKShapeNode(path: halfPath)
+        shape.fillColor = filled
+            ? SKColor(red: 0.2, green: 0.5, blue: 1.0, alpha: 1.0)
+            : SKColor(white: 0.3, alpha: 0.5)
+        shape.strokeColor = filled
+            ? SKColor(red: 0.1, green: 0.3, blue: 0.7, alpha: 1.0)
+            : SKColor(white: 0.2, alpha: 0.5)
+        shape.lineWidth = 1.5
+        container.addChild(shape)
 
-        let crystalShape = SKShapeNode(path: crystalPath)
-        crystalShape.fillColor = filled ? SKColor(red: 0.2, green: 0.5, blue: 1.0, alpha: 1.0) : SKColor(white: 0.3, alpha: 0.5)
-        crystalShape.strokeColor = filled ? SKColor(red: 0.1, green: 0.3, blue: 0.7, alpha: 1.0) : SKColor(white: 0.2, alpha: 0.5)
-        crystalShape.lineWidth = 1.5
-
-        // Add inner highlight for filled crystals
+        // Inner highlight for filled halves
         if filled {
-            let highlightPath = CGMutablePath()
-            let hSize = size * 0.4
-            highlightPath.move(to: CGPoint(x: 0, y: hSize))
-            highlightPath.addLine(to: CGPoint(x: hSize * 0.5, y: 0))
-            highlightPath.addLine(to: CGPoint(x: 0, y: -hSize * 0.3))
-            highlightPath.addLine(to: CGPoint(x: -hSize * 0.5, y: 0))
-            highlightPath.closeSubpath()
-
-            let highlight = SKShapeNode(path: highlightPath)
-            highlight.fillColor = SKColor(red: 0.5, green: 0.8, blue: 1.0, alpha: 0.6)
+            let hlPath = CGMutablePath()
+            let hr = r * 0.55
+            if index == 0 {
+                hlPath.addArc(center: CGPoint(x: -halfGap - r * 0.15, y: r * 0.1), radius: hr,
+                              startAngle: .pi / 2, endAngle: .pi * 3 / 2, clockwise: false)
+                hlPath.closeSubpath()
+            } else {
+                hlPath.addArc(center: CGPoint(x: halfGap + r * 0.15, y: r * 0.1), radius: hr,
+                              startAngle: -.pi / 2, endAngle: .pi / 2, clockwise: false)
+                hlPath.closeSubpath()
+            }
+            let highlight = SKShapeNode(path: hlPath)
+            highlight.fillColor = SKColor(red: 0.5, green: 0.8, blue: 1.0, alpha: 0.4)
             highlight.strokeColor = .clear
-            highlight.position = CGPoint(x: -size * 0.1, y: size * 0.15)
             container.addChild(highlight)
         }
 
-        container.addChild(crystalShape)
         return container
     }
 
     func setMana(_ mana: Int) {
         currentMana = max(0, min(maxMana, mana))
 
-        // Update crystal visuals
-        for (index, crystalNode) in crystalNodes.enumerated() {
-            crystalNode.removeAllChildren()
+        for (index, halfNode) in halfNodes.enumerated() {
+            halfNode.removeAllChildren()
 
             let filled = index < currentMana
-            let newCrystal = createCrystalNode(filled: filled)
-            for child in newCrystal.children {
-                crystalNode.addChild(child.copy() as! SKNode)
+            let newHalf = createHalfNode(index: index, filled: filled)
+            for child in newHalf.children {
+                halfNode.addChild(child.copy() as! SKNode)
             }
 
             // Animate mana loss
@@ -98,7 +107,7 @@ class ManaDisplay: SKNode {
                     SKAction.scale(to: 1.3, duration: 0.1),
                     SKAction.scale(to: 1.0, duration: 0.1)
                 ])
-                crystalNode.run(scale)
+                halfNode.run(scale)
             }
         }
     }
@@ -486,6 +495,38 @@ struct SpellIcons {
                 path.move(to: branchStart)
                 path.addLine(to: CGPoint(x: branchStart.x + cos(branchAngle2) * s * 0.2, y: branchStart.y + sin(branchAngle2) * s * 0.2))
             }
+
+        case "black-tentacles":
+            // Tendrils radiating from center with curled tips
+            for i in 0..<4 {
+                let angle = CGFloat(i) * .pi / 2 + .pi / 4
+                let tipAngle = angle + .pi / 6
+                path.move(to: .zero)
+                let mid = CGPoint(x: cos(angle) * s * 0.5, y: sin(angle) * s * 0.5)
+                let tip = CGPoint(x: cos(angle) * s * 0.8, y: sin(angle) * s * 0.8)
+                let curl = CGPoint(x: tip.x + cos(tipAngle) * s * 0.3, y: tip.y + sin(tipAngle) * s * 0.3)
+                path.addCurve(to: curl, control1: mid, control2: tip)
+            }
+
+        case "blight":
+            // Wilted plant: drooping stem with dead leaves
+            path.move(to: CGPoint(x: 0, y: -s))
+            path.addLine(to: CGPoint(x: 0, y: s * 0.3))
+            // Drooping left leaf
+            path.move(to: CGPoint(x: 0, y: s * 0.1))
+            path.addCurve(to: CGPoint(x: -s * 0.6, y: -s * 0.2),
+                          control1: CGPoint(x: -s * 0.3, y: s * 0.4),
+                          control2: CGPoint(x: -s * 0.5, y: 0))
+            // Drooping right leaf
+            path.move(to: CGPoint(x: 0, y: s * 0.3))
+            path.addCurve(to: CGPoint(x: s * 0.6, y: -s * 0.1),
+                          control1: CGPoint(x: s * 0.3, y: s * 0.5),
+                          control2: CGPoint(x: s * 0.5, y: s * 0.1))
+            // Drooping top
+            path.move(to: CGPoint(x: 0, y: s * 0.3))
+            path.addCurve(to: CGPoint(x: s * 0.2, y: s * 0.5),
+                          control1: CGPoint(x: 0, y: s * 0.6),
+                          control2: CGPoint(x: s * 0.1, y: s * 0.6))
 
         default:
             // Fallback: simple star

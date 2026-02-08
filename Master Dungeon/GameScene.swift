@@ -401,9 +401,11 @@ class GameScene: SKScene {
         challengeHadEnemies = false  // Reset for new challenge
 
         if let challenge = currentChallenge {
-            // Set up timed challenge timer (in hardcore, stealth challenges also have a timer)
-            if challenge.type == .timed || (challenge.type == .stealth && GameManager.shared.gameMode == .hardcore) {
-                challengeTimeLimit = GameManager.shared.gameMode == .hardcore ? 5.0 : 15.0
+            // Set up timed challenge timer (stealth and light-only puzzle challenges have a timer)
+            let isLightOnlyPuzzle = challenge.type == .puzzle
+                && challenge.requiredCapabilities == [.illumination]
+            if challenge.type == .timed || challenge.type == .stealth || isLightOnlyPuzzle {
+                challengeTimeLimit = GameManager.shared.gameMode == .hardcore ? 5.0 : 10.0
             }
 
             for element in challenge.elements {
@@ -993,7 +995,17 @@ class GameScene: SKScene {
 
         // Handle crowd control
         if spell.causesParalysis {
-            if let enemy = enemyAt(coord) {
+            if spell.isAoE {
+                let radius = max(1, spell.range / 2)
+                let affectedHexes = coord.hexesInRange(radius)
+                for hex in affectedHexes {
+                    if let enemy = enemyAt(hex) {
+                        enemy.stun(turns: 2)
+                        let screenPos = worldToScreen(hex)
+                        showStatusText("Stunned!", at: screenPos, color: .yellow)
+                    }
+                }
+            } else if let enemy = enemyAt(coord) {
                 enemy.stun(turns: 2)
                 let screenPos = worldToScreen(coord)
                 showStatusText("Stunned!", at: screenPos, color: .yellow)
@@ -1561,7 +1573,7 @@ class GameScene: SKScene {
         case .stealth:
             // Stealth challenges complete when player reaches target without detection
             // In hardcore, also fail if time runs out
-            if GameManager.shared.gameMode == .hardcore && challengeTimeLimit > 0 && challengeTimer >= challengeTimeLimit {
+            if challengeTimeLimit > 0 && challengeTimer >= challengeTimeLimit {
                 showStatusText("Time's up!", at: CGPoint(x: size.width / 2, y: size.height / 2), color: .red)
                 player.takeDamage(1)
                 if !player.isAlive { showGameOver(); return }
@@ -1607,7 +1619,18 @@ class GameScene: SKScene {
             isComplete = checkAllTargetsReached()
 
         case .puzzle:
-            // Puzzles complete when all darkness is dispelled and all triggers activated
+            // Light-only puzzles fail if time runs out
+            if challengeTimeLimit > 0 && challengeTimer >= challengeTimeLimit {
+                showStatusText("Time's up!", at: CGPoint(x: size.width / 2, y: size.height / 2), color: .red)
+                player.takeDamage(1)
+                if !player.isAlive { showGameOver(); return }
+                challengeCompleted = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                    self?.challengeCompleted = false
+                    self?.generateNewChallenge()
+                }
+                return
+            }
             isComplete = checkPuzzleSolved()
         }
 
@@ -1901,12 +1924,14 @@ class GameScene: SKScene {
         // Update spell bar (for mana costs, etc.)
         spellBar?.updateSpellStates(currentMana: player.mana)
 
-        // Update challenge timer for timed challenges (and stealth in hardcore)
-        let isTimed = currentChallenge?.type == .timed || (currentChallenge?.type == .stealth && GameManager.shared.gameMode == .hardcore)
+        // Update challenge timer for timed/stealth/light-only-puzzle challenges
+        let isTimed = currentChallenge?.type == .timed || currentChallenge?.type == .stealth
+            || challengeTimeLimit > 0  // Covers light-only puzzles (timer set during setup)
         if isTimed && challengeTimeLimit > 0 && !challengeCompleted {
             challengeTimer += dt
             let remaining = max(0, challengeTimeLimit - challengeTimer)
-            objectiveLabel?.text = String(format: "Time: %.1fs", remaining)
+            let desc = currentChallenge?.description ?? ""
+            objectiveLabel?.text = String(format: "%@ (%.1fs)", desc, remaining)
             checkChallengeCompletion()
         }
 
