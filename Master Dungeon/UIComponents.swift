@@ -608,7 +608,9 @@ class SpellSlot: SKNode {
 
         addChild(background)
         addChild(iconNode)
-        addChild(costLabel)
+        if GameManager.shared.gameMode != .blitz {
+            addChild(costLabel)
+        }
         addChild(selectionBorder)
     }
 

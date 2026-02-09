@@ -21,12 +21,8 @@ struct Spell: Identifiable, Hashable {
     let isPassive: Bool         // Not Instantaneous
     let noSave: Bool            // No Save required
     let isAoE: Bool             // Area of Effect
-    let hasAdvantage: Bool      // Grants Advantage
     let causesParalysis: Bool   // Paralysis (No Harm to You)
-    let affectsMovement: Bool   // Creature Movement
-    let affectsObjects: Bool    // Object Changes
     let producesLight: Bool     // Lights
-    let exchangesKnowledge: Bool // Exchange of Knowledge
 
     // Computed properties
     var averageOffense: Double { offenseDie > 0 ? Double(offenseDie + 1) / 2.0 : 0.0 }
@@ -58,11 +54,7 @@ struct Spell: Identifiable, Hashable {
         if isDefensive && !isOffensive { tags.insert(.healing) }
         if isAoE { tags.insert(.areaEffect) }
         if causesParalysis { tags.insert(.crowdControl) }
-        if affectsMovement { tags.insert(.mobility) }
-        if affectsObjects { tags.insert(.objectManipulation) }
         if producesLight { tags.insert(.illumination) }
-        if exchangesKnowledge { tags.insert(.information) }
-        if hasAdvantage { tags.insert(.buffing) }
         if range >= 4 { tags.insert(.ranged) }
         if range <= 1 { tags.insert(.melee) }
         if isPassive { tags.insert(.sustained) }
@@ -87,11 +79,8 @@ enum SpellCapability: String, CaseIterable {
     case healing          // Can heal
     case areaEffect       // Affects multiple hexes
     case crowdControl     // Can paralyze/stop enemies
-    case mobility         // Affects movement
-    case objectManipulation // Can affect objects
     case illumination     // Produces light
-    case information      // Gathers information
-    case buffing          // Provides advantages
+    case information      // Gathers information (for invisible enemies)
     case ranged           // Long range (4+ hexes)
     case melee            // Close range (1 hex)
     case sustained        // Lasts over time

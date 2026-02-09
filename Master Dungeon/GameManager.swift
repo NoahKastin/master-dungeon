@@ -10,6 +10,14 @@ import Foundation
 enum GameMode {
     case normal
     case hardcore
+    case blitz
+}
+
+// MARK: - Blitz Timer Tuning
+enum BlitzConfig {
+    static var startTime: TimeInterval = 10
+    static var bonusPerChallenge: TimeInterval = 5
+    static var penaltyPerDamage: TimeInterval = 3
 }
 
 class GameManager {

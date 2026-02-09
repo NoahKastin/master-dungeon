@@ -82,7 +82,6 @@ struct ChallengeScenario {
 class ChallengeGenerator {
     private let randomSource: GKRandomSource
     private var challengeHistory: [ChallengeType] = []
-    private var difficultyModifier: Int = 0
 
     // AI system for guaranteed solvability
     private let challengeAI: ChallengeAI
@@ -105,7 +104,7 @@ class ChallengeGenerator {
 
         // Select a challenge type that varies from recent history
         let challengeType = selectVariedChallengeType(for: analysis)
-        print("CHALLENGE DEBUG: Selected type = \(challengeType), hasDamage = \(analysis.capabilities.contains(.damage)), hasMobility = \(analysis.hasMobility)")
+        print("CHALLENGE DEBUG: Selected type = \(challengeType), hasDamage = \(analysis.capabilities.contains(.damage))")
 
         // Try AI-generated challenge first (guaranteed solvable)
         if let aiChallenge = challengeAI.generateSolvableChallenge(for: loadout, type: challengeType, difficulty: difficulty) {
@@ -148,10 +147,8 @@ class ChallengeGenerator {
         var hasRangedAttack: Bool { spells.contains { $0.isOffensive && $0.range >= 3 } }
         var hasAoE: Bool { spells.contains { $0.isAoE } }
         var hasHealing: Bool { capabilities.contains(.healing) }
-        var hasMobility: Bool { capabilities.contains(.mobility) }
         var hasIllumination: Bool { capabilities.contains(.illumination) }
         var hasCrowdControl: Bool { capabilities.contains(.crowdControl) }
-        var hasObjectManip: Bool { capabilities.contains(.objectManipulation) }
         var hasInformation: Bool { capabilities.contains(.information) }
 
         // Strongest damage spell
@@ -204,18 +201,15 @@ class ChallengeGenerator {
             }
         }
 
-        // Obstacle - need damage OR mobility (skip in hardcore)
+        // Obstacle - need damage (skip in hardcore)
         if GameManager.shared.gameMode != .hardcore {
-            if analysis.hasMobility {
-                weights[.obstacle, default: 0] += 3
-            }
             if hasDamage {
-                weights[.obstacle, default: 0] += 2  // Can destroy obstacles
+                weights[.obstacle, default: 0] += 3  // Can destroy obstacles
             }
         }
 
-        // Puzzle - need illumination or object manipulation
-        if analysis.hasIllumination || analysis.hasObjectManip {
+        // Puzzle - need illumination
+        if analysis.hasIllumination {
             weights[.puzzle, default: 0] += 3
         }
 
@@ -224,11 +218,13 @@ class ChallengeGenerator {
             weights[.rescue, default: 0] += 3
         }
 
-        // Stealth - benefits from crowd control or mobility
-        if analysis.hasCrowdControl || analysis.hasMobility {
-            weights[.stealth, default: 0] += 3
-        } else {
-            weights[.stealth, default: 0] += 1  // Can still sneak around
+        // Stealth - benefits from crowd control (excluded in Blitz)
+        if GameManager.shared.gameMode != .blitz {
+            if analysis.hasCrowdControl {
+                weights[.stealth, default: 0] += 3
+            } else {
+                weights[.stealth, default: 0] += 1  // Can still sneak around
+            }
         }
 
         // Timed challenges are handled via stealth (stealth has a timer)
@@ -239,7 +235,11 @@ class ChallengeGenerator {
             if analysis.hasHealing {
                 weights[.rescue] = 3
             }
-            weights[.stealth, default: 0] += 3  // Can always sneak (with timer)
+            if GameManager.shared.gameMode == .blitz {
+                weights[.obstacle, default: 0] += 3
+            } else {
+                weights[.stealth, default: 0] += 3  // Can always sneak (with timer)
+            }
         }
 
         // Reduce weight for recently used types (variety)
@@ -249,7 +249,7 @@ class ChallengeGenerator {
 
         // Weighted random selection
         let totalWeight = weights.values.reduce(0, +)
-        let fallback: ChallengeType = .stealth
+        let fallback: ChallengeType = GameManager.shared.gameMode == .blitz ? .obstacle : .stealth
         guard totalWeight > 0 else {
             return analysis.hasHealing ? .rescue : fallback  // Safe fallback
         }
@@ -346,7 +346,7 @@ class ChallengeGenerator {
 
     private func createObstacleScenario(analysis: LoadoutAnalysis) -> ChallengeScenario {
         var descriptions: [String]
-        let required: Set<SpellCapability> = [.mobility]
+        let required: Set<SpellCapability> = [.damage]
 
         if analysis.capabilities.contains(.damage) {
             descriptions = [
@@ -382,10 +382,6 @@ class ChallengeGenerator {
         if analysis.hasIllumination {
             descriptions.append("Darkness shrouds the area. Bring light to reveal the path!")
             required.insert(.illumination)
-        }
-        if analysis.hasObjectManip {
-            descriptions.append("Ancient mechanisms await activation. Manipulate them to proceed!")
-            required.insert(.objectManipulation)
         }
         if analysis.hasInformation {
             descriptions.append("Hidden secrets lie nearby. Use your insight to find them!")
@@ -437,7 +433,7 @@ class ChallengeGenerator {
             name: "Stealth",
             type: .stealth,
             requiredCapabilities: [],
-            preferredCapabilities: [.crowdControl, .mobility],
+            preferredCapabilities: [.crowdControl],
             descriptionTemplates: descriptions,
             minElements: 3,
             maxElements: 5
@@ -471,7 +467,7 @@ class ChallengeGenerator {
             name: "Rescue",
             type: .rescue,
             requiredCapabilities: required,
-            preferredCapabilities: [.objectManipulation, .damage],
+            preferredCapabilities: [.damage],
             descriptionTemplates: descriptions,
             minElements: 2,
             maxElements: 4
@@ -490,7 +486,7 @@ class ChallengeGenerator {
             name: "Timed Challenge",
             type: .timed,
             requiredCapabilities: [],
-            preferredCapabilities: [.ranged, .areaEffect, .mobility],
+            preferredCapabilities: [.ranged, .areaEffect],
             descriptionTemplates: descriptions,
             minElements: 3 + difficulty,
             maxElements: 5 + difficulty
@@ -643,12 +639,10 @@ class ChallengeGenerator {
 
         // Determine if we should fully block the goal
         let hasDamage = analysis.capabilities.contains(.damage)
-        let hasMobility = analysis.capabilities.contains(.mobility)
-        let canBypass = hasDamage || hasMobility
 
-        // 50% chance to fully block when player can bypass
-        let fullyBlock = canBypass && randomSource.nextBool()
-        print("OBSTACLE DEBUG: hasDamage=\(hasDamage), hasMobility=\(hasMobility), canBypass=\(canBypass), fullyBlock=\(fullyBlock)")
+        // 50% chance to fully block when player can destroy obstacles
+        let fullyBlock = hasDamage && randomSource.nextBool()
+        print("OBSTACLE DEBUG: hasDamage=\(hasDamage), fullyBlock=\(fullyBlock)")
 
         if fullyBlock {
             // Create a complete wall at r=1 to block access to target at r=2
@@ -726,24 +720,6 @@ class ChallengeGenerator {
                 type: .darkness(radius: 3),
                 position: darknessPos,
                 properties: [:]
-            ))
-        }
-
-        if analysis.hasObjectManip {
-            let triggerPos = randomPosition(minDistance: 2, maxDistance: 3, avoiding: usedPositions)
-            usedPositions.insert(triggerPos)
-            elements.append(ChallengeElement(
-                type: .trigger(activates: "door"),
-                position: triggerPos,
-                properties: [:]
-            ))
-
-            let doorPos = randomPosition(minDistance: 2, maxDistance: 3, avoiding: usedPositions)
-            usedPositions.insert(doorPos)
-            elements.append(ChallengeElement(
-                type: .obstacle(blocking: true, destructible: false),
-                position: doorPos,
-                properties: ["id": "door"]
             ))
         }
 
@@ -841,17 +817,6 @@ class ChallengeGenerator {
             position: enemyPos,
             properties: ["targetingNpc": true]
         ))
-
-        // Optional obstacle
-        if analysis.hasObjectManip {
-            let obstaclePos = randomPosition(minDistance: 1, maxDistance: 2, avoiding: usedPositions)
-            usedPositions.insert(obstaclePos)
-            elements.append(ChallengeElement(
-                type: .obstacle(blocking: true, destructible: false),
-                position: obstaclePos,
-                properties: ["moveable": true]
-            ))
-        }
 
         return elements
     }

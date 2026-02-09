@@ -10,7 +10,12 @@ import GameplayKit
 
 class Player: GKEntity {
     // MARK: - Constants
-    static var maxHP: Int { GameManager.shared.gameMode == .hardcore ? 1 : 4 }
+    static var maxHP: Int {
+        switch GameManager.shared.gameMode {
+        case .hardcore: return 1
+        case .normal, .blitz: return 4
+        }
+    }
     static let maxMana = 2
 
     // MARK: - State
@@ -80,7 +85,8 @@ class Player: GKEntity {
     }
 
     func canCast(_ spell: Spell) -> Bool {
-        loadout.spells.contains(spell) && mana >= spell.manaCost
+        if GameManager.shared.gameMode == .blitz { return loadout.spells.contains(spell) }
+        return loadout.spells.contains(spell) && mana >= spell.manaCost
     }
 
     // MARK: - Spell Casting
@@ -90,8 +96,11 @@ class Player: GKEntity {
             return .failure(.notInLoadout)
         }
 
-        guard mana >= spell.manaCost else {
-            return .failure(.insufficientMana)
+        let isBlitz = GameManager.shared.gameMode == .blitz
+        if !isBlitz {
+            guard mana >= spell.manaCost else {
+                return .failure(.insufficientMana)
+            }
         }
 
         let distance = position.distance(to: target)
@@ -99,9 +108,11 @@ class Player: GKEntity {
             return .failure(.outOfRange)
         }
 
-        // Spend mana (clamp to valid range 0 to maxMana)
-        mana = max(0, min(Player.maxMana, mana - spell.manaCost))
-        onManaChanged?(mana)
+        // Spend mana (skip in Blitz — no mana system)
+        if !isBlitz {
+            mana = max(0, min(Player.maxMana, mana - spell.manaCost))
+            onManaChanged?(mana)
+        }
 
         // Handle pure passive toggle (non-offensive, non-defensive passives)
         if spell.isPassive && !spell.isOffensive && !spell.isDefensive {
@@ -225,6 +236,4 @@ enum SpellEffect {
     case activatedPassive
     case deactivatedPassive
     case areaEffect(center: HexCoord, radius: Int, damage: Int)
-    case summon(entityType: String, at: HexCoord)
-    case movement(from: HexCoord, to: HexCoord)
 }

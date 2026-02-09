@@ -81,15 +81,12 @@ class ChallengeAI {
         let maxDamagePerTurn: Int
         let canHeal: Bool
         let maxHealPerTurn: Int
-        let canMove: Bool  // Teleport/mobility spells
-        let maxMoveRange: Int
         let canAttackAtRange: Bool
         let maxAttackRange: Int
         let canAoE: Bool
         let aoERadius: Int
         let canCrowdControl: Bool
         let canIlluminate: Bool
-        let canManipulateObjects: Bool
         let canDetectHidden: Bool
 
         // Resource constraints
@@ -112,9 +109,7 @@ class ChallengeAI {
         }
 
         var maxChallengeDistance: Int {
-            if canMove {
-                return 5  // Full grid range
-            } else if canAttackAtRange {
+            if canAttackAtRange {
                 return maxAttackRange
             } else {
                 return 3  // Walking distance
@@ -134,10 +129,6 @@ class ChallengeAI {
         let healingSpells = spells.filter { $0.isDefensive && !$0.isOffensive }
         let maxHeal = healingSpells.map { $0.rollDefense() }.max() ?? 0
 
-        // Calculate mobility
-        let mobilitySpells = spells.filter { $0.affectsMovement }
-        let maxMoveRange = mobilitySpells.map { $0.range }.max() ?? 0
-
         // Calculate attack range
         let maxRange = damageSpells.map { $0.range }.max() ?? 1
 
@@ -154,15 +145,12 @@ class ChallengeAI {
             maxDamagePerTurn: maxDamage,
             canHeal: !healingSpells.isEmpty,
             maxHealPerTurn: maxHeal,
-            canMove: !mobilitySpells.isEmpty,
-            maxMoveRange: maxMoveRange,
             canAttackAtRange: maxRange >= 3,
             maxAttackRange: maxRange,
             canAoE: !aoESpells.isEmpty,
             aoERadius: aoERadius,
             canCrowdControl: loadout.hasCapability(.crowdControl),
             canIlluminate: loadout.hasCapability(.illumination),
-            canManipulateObjects: loadout.hasCapability(.objectManipulation),
             canDetectHidden: loadout.hasCapability(.information),
             totalMana: 10,  // Max mana
             spellCount: spells.count,
@@ -182,13 +170,13 @@ class ChallengeAI {
             elements = generateCombatCSP(constraints: constraints, difficulty: difficulty, usedPositions: &usedPositions)
 
         case .obstacle:
-            // Constraint: Player must be able to cross obstacles
-            guard constraints.canMove || constraints.canDealDamage else { return nil }
+            // Constraint: Player must be able to destroy obstacles
+            guard constraints.canDealDamage else { return nil }
             elements = generateObstacleCSP(constraints: constraints, usedPositions: &usedPositions)
 
         case .puzzle:
-            // Constraint: Player must have required puzzle-solving abilities
-            guard constraints.canIlluminate || constraints.canManipulateObjects else { return nil }
+            // Constraint: Player must have illumination for puzzle challenges
+            guard constraints.canIlluminate else { return nil }
             elements = generatePuzzleCSP(constraints: constraints, usedPositions: &usedPositions)
 
         case .survival:
@@ -197,8 +185,8 @@ class ChallengeAI {
             elements = generateSurvivalCSP(constraints: constraints, difficulty: difficulty, usedPositions: &usedPositions)
 
         case .stealth:
-            // Constraint: Player must have mobility OR crowd control
-            guard constraints.canMove || constraints.canCrowdControl else { return nil }
+            // Constraint: Player must have crowd control to sneak past
+            guard constraints.canCrowdControl else { return nil }
             elements = generateStealthCSP(constraints: constraints, usedPositions: &usedPositions)
 
         case .rescue:
@@ -207,8 +195,8 @@ class ChallengeAI {
             elements = generateRescueCSP(constraints: constraints, usedPositions: &usedPositions)
 
         case .timed:
-            // Constraint: Player must be able to reach targets quickly
-            guard constraints.canMove || constraints.canAttackAtRange else { return nil }
+            // Constraint: Player must be able to reach targets
+            guard constraints.canAttackAtRange else { return nil }
             elements = generateTimedCSP(constraints: constraints, usedPositions: &usedPositions)
         }
 
@@ -379,24 +367,6 @@ class ChallengeAI {
             ))
         }
 
-        if constraints.canManipulateObjects {
-            let triggerPos = randomValidPosition(minDist: 2, maxDist: 3, avoiding: usedPositions)
-            usedPositions.insert(triggerPos)
-            elements.append(ChallengeElement(
-                type: .trigger(activates: "door"),
-                position: triggerPos,
-                properties: [:]
-            ))
-
-            let doorPos = randomValidPosition(minDist: 2, maxDist: 3, avoiding: usedPositions)
-            usedPositions.insert(doorPos)
-            elements.append(ChallengeElement(
-                type: .obstacle(blocking: true, destructible: false),
-                position: doorPos,
-                properties: ["id": "door"]
-            ))
-        }
-
         // Target (within 3-hex visible range)
         let targetPos = randomValidPosition(minDist: 2, maxDist: 3, avoiding: usedPositions)
         usedPositions.insert(targetPos)
@@ -513,9 +483,7 @@ class ChallengeAI {
         var elements: [ChallengeElement] = []
 
         // CSP: Targets must be reachable within time limit
-        // Calculate how many targets player can reasonably reach
-        let reachablePerTurn = constraints.canMove ? 2 : 1
-        let targetCount = min(4, reachablePerTurn * 5)  // ~5 turns worth
+        let targetCount = min(4, 5)  // ~5 turns worth at 1 hex per turn
 
         // Arrange targets in reachable pattern
         for i in 0..<targetCount {
@@ -860,9 +828,9 @@ class ChallengeAI {
         case .npc(let needsHealing, _):
             return needsHealing ? [.healing] : []
         case .trigger:
-            return [.objectManipulation]
+            return []
         case .obstacle(_, let destructible):
-            return destructible ? [.damage] : [.objectManipulation]
+            return destructible ? [.damage] : []
         default:
             return []
         }

@@ -84,14 +84,16 @@ class SpellSelectionScene: SKScene {
 
         // Subtitle
         let subtitleLabel = SKLabelNode(fontNamed: "Cochin")
-        subtitleLabel.text = "Select up to 3 spells (Pass is always available)"
+        subtitleLabel.text = GameManager.shared.gameMode == .blitz
+            ? "Select up to 3 spells"
+            : "Select up to 3 spells (Pass is always available)"
         subtitleLabel.fontSize = 14
         subtitleLabel.fontColor = SKColor(white: 0.7, alpha: 1.0)
         subtitleLabel.position = CGPoint(x: size.width / 2, y: size.height - safeTop - 55)
         subtitleLabel.zPosition = 100
         addChild(subtitleLabel)
 
-        // Mana counter
+        // Mana counter (hidden in Blitz — no mana system)
         manaLabel = SKLabelNode(fontNamed: "Cochin-Bold")
         manaLabel.fontSize = 18
         manaLabel.fontColor = SKColor(red: 0.3, green: 0.5, blue: 1.0, alpha: 1.0)
@@ -99,7 +101,9 @@ class SpellSelectionScene: SKScene {
         manaLabel.position = CGPoint(x: 20, y: size.height - safeTop - 85)
         manaLabel.zPosition = 100
         updateManaLabel()
-        addChild(manaLabel)
+        if GameManager.shared.gameMode != .blitz {
+            addChild(manaLabel)
+        }
 
         // Selected count
         selectedLabel = SKLabelNode(fontNamed: "Cochin")
@@ -179,16 +183,24 @@ class SpellSelectionScene: SKScene {
     }
 
     private func setupSpellGrid() {
-        // Put Pass first, then other spells sorted by mana cost
-        var spells = [SpellData.passSpell]
-        let hardcoreSpellIDs: Set<String> = [
-            "shocking-grasp", "burning-hands", "magic-missile",
-            "acid-splash", "black-tentacles", "blight", "chill-touch", "sleet-storm"
-        ]
-        let availableSpells = SpellData.allSpells.filter { spell in
-            spell.id != "pass" && (GameManager.shared.gameMode != .hardcore || hardcoreSpellIDs.contains(spell.id))
+        let isBlitz = GameManager.shared.gameMode == .blitz
+        var spells: [Spell]
+
+        if isBlitz {
+            // Blitz mode: no Pass, use dedicated Blitz spell list
+            spells = SpellData.blitzSpells
+        } else {
+            // Put Pass first, then other spells sorted by mana cost
+            spells = [SpellData.passSpell]
+            let hardcoreSpellIDs: Set<String> = [
+                "shocking-grasp", "burning-hands", "magic-missile",
+                "acid-splash", "black-tentacles", "blight", "chill-touch", "sleet-storm"
+            ]
+            let availableSpells = SpellData.allSpells.filter { spell in
+                spell.id != "pass" && (GameManager.shared.gameMode == .normal || hardcoreSpellIDs.contains(spell.id))
+            }
+            spells.append(contentsOf: availableSpells.sorted { $0.manaCost < $1.manaCost })
         }
-        spells.append(contentsOf: availableSpells.sorted { $0.manaCost < $1.manaCost })
 
         let scrollAreaHeight = size.height - headerHeight - footerHeight
 
@@ -504,7 +516,10 @@ class SpellCard: SKNode {
         addChild(descLabel)
         addChild(iconNode)
         addChild(statsLabel)
-        addChild(costLabel)
+        // Hide mana cost label in Blitz mode (no mana system)
+        if GameManager.shared.gameMode != .blitz {
+            addChild(costLabel)
+        }
     }
 
     required init?(coder aDecoder: NSCoder) {

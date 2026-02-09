@@ -61,7 +61,6 @@ class GameScene: SKScene {
     private var challengeTimer: TimeInterval = 0
     private var challengeTimeLimit: TimeInterval = 0
     private var playerDetected: Bool = false
-    private var slainEnemyPositions: Set<HexCoord> = []
 
     // MARK: - Player Visual
     private var playerSprite: SKShapeNode!
@@ -73,6 +72,11 @@ class GameScene: SKScene {
     private var objectiveLabel: SKLabelNode?
     private var backButton: SKNode?
     private var isGameOver: Bool = false
+
+    // MARK: - Blitz Timer
+    private var blitzTimer: TimeInterval = 0
+    private var blitzTimerLabel: SKLabelNode?
+    private var isBlitz: Bool { GameManager.shared.gameMode == .blitz }
 
     // MARK: - State
     private var selectedSpell: Spell?
@@ -224,17 +228,33 @@ class GameScene: SKScene {
         let safeTop = rawSafeArea.top > 0 ? rawSafeArea.top : 59
         let safeBottom = rawSafeArea.bottom > 0 ? rawSafeArea.bottom : 34
 
-        // HP display (top left)
-        let hp = HPDisplay()
-        hp.position = CGPoint(x: 30, y: size.height - safeTop - 40)
-        uiLayer.addChild(hp)
-        hpDisplay = hp
+        // HP display (top left) — replaced by blitz timer in Blitz mode
+        if isBlitz {
+            blitzTimer = BlitzConfig.startTime
+            let timerLabel = SKLabelNode(fontNamed: "Cochin-Bold")
+            timerLabel.fontSize = 22
+            timerLabel.fontColor = SKColor(red: 0.9, green: 0.75, blue: 0.25, alpha: 1.0)
+            timerLabel.horizontalAlignmentMode = .left
+            timerLabel.verticalAlignmentMode = .center
+            timerLabel.position = CGPoint(x: 16, y: size.height - safeTop - 40)
+            timerLabel.zPosition = 100
+            timerLabel.text = String(format: "%.1fs", blitzTimer)
+            uiLayer.addChild(timerLabel)
+            blitzTimerLabel = timerLabel
+        } else {
+            let hp = HPDisplay()
+            hp.position = CGPoint(x: 30, y: size.height - safeTop - 40)
+            uiLayer.addChild(hp)
+            hpDisplay = hp
+        }
 
-        // Mana display (top center, between HP and back button)
-        let mana = ManaDisplay()
-        mana.position = CGPoint(x: size.width / 2, y: size.height - safeTop - 40)
-        uiLayer.addChild(mana)
-        manaBar = mana
+        // Mana display (top center, between HP and back button) — hidden in Blitz
+        if !isBlitz {
+            let mana = ManaDisplay()
+            mana.position = CGPoint(x: size.width / 2, y: size.height - safeTop - 40)
+            uiLayer.addChild(mana)
+            manaBar = mana
+        }
 
         // Spell bar (bottom center) - only create if we have spells
         let spells = player.loadout.spells
@@ -391,7 +411,6 @@ class GameScene: SKScene {
         }
         activeEnemies.removeAll()
         enemySprites.removeAll()
-        slainEnemyPositions.removeAll()
 
         // Reset challenge state
         blockedHexes.removeAll()
@@ -527,9 +546,6 @@ class GameScene: SKScene {
 
     private func handleEnemyDeath(_ enemy: Enemy) {
         guard let sprite = enemySprites[enemy.id] else { return }
-
-        // Track slain enemy position for Create Undead
-        slainEnemyPositions.insert(enemy.position)
 
         // Death animation
         let fadeOut = SKAction.fadeOut(withDuration: 0.3)
@@ -911,17 +927,6 @@ class GameScene: SKScene {
     }
 
     private func applySpellEffect(spell: Spell, at coord: HexCoord, effect: SpellEffect) {
-        // Handle pure movement spells (teleport to target) - only if not also offensive
-        if spell.affectsMovement && !spell.isOffensive && coord != player.position {
-            // Check if destination is valid (not blocked, not occupied by enemy)
-            let enemyPositions = Set(activeEnemies.filter { $0.isAlive }.map { $0.position })
-            if !blockedHexes.contains(coord) && !enemyPositions.contains(coord) {
-                player.teleportTo(coord)
-                showStatusText("Teleported!", at: CGPoint(x: size.width / 2, y: size.height / 2), color: .cyan)
-            }
-            return
-        }
-
         var damageDealt = 0
 
         // Handle damage spells (including passive weapon spells like Flame Blade, Brand)
@@ -1012,31 +1017,6 @@ class GameScene: SKScene {
             }
         }
 
-        // Handle summoning spells (Create Undead, etc.)
-        if spell.affectsMovement && spell.exchangesKnowledge && spell.isDefensive {
-            // Create Undead requires a corpse (slain enemy)
-            if slainEnemyPositions.contains(coord) {
-                spawnSummon(at: coord, spell: spell)
-                slainEnemyPositions.remove(coord)  // Consume the corpse
-            } else {
-                // No corpse at target location
-                let screenPos = worldToScreen(coord)
-                showStatusText("No corpse!", at: screenPos, color: .gray)
-            }
-        }
-
-        // Handle object-affecting spells (triggers, moveable obstacles)
-        if spell.affectsObjects {
-            if activateTriggerAt(coord) {
-                let screenPos = worldToScreen(coord)
-                showSpellFlash(color: .purple, at: screenPos)
-                showStatusText("Activated!", at: screenPos, color: .purple)
-            } else {
-                let screenPos = worldToScreen(coord)
-                showSpellFlash(color: .purple, at: screenPos)
-            }
-        }
-
         // Handle illumination spells (dispel darkness)
         if spell.producesLight {
             if dispelDarknessAt(coord) {
@@ -1057,26 +1037,6 @@ class GameScene: SKScene {
 
         // Check for challenge completion after spell effects
         checkChallengeCompletion()
-    }
-
-    private func spawnSummon(at coord: HexCoord, spell: Spell) {
-        // Create a visual indicator for the summon
-        let summonSprite = SKShapeNode(circleOfRadius: hexSize * 0.3)
-        summonSprite.fillColor = SKColor(red: 0.5, green: 0.8, blue: 0.5, alpha: 0.8)
-        summonSprite.strokeColor = SKColor(red: 0.3, green: 0.6, blue: 0.3, alpha: 1.0)
-        summonSprite.lineWidth = 2
-        // Convert world coordinate to local, then to screen
-        let localCoord = coord - player.position
-        summonSprite.position = hexLayout.hexToScreen(localCoord)
-        summonSprite.zPosition = 4
-        entityLayer.addChild(summonSprite)
-        challengeSprites[summonSprite] = coord  // Track world position
-
-        // Add the summon position to blocked hexes (enemies can't move through)
-        blockedHexes.insert(coord)
-
-        let screenPos = worldToScreen(coord)
-        showStatusText("Summoned!", at: screenPos, color: .green)
     }
 
     // MARK: - Interactive Element Handling
@@ -1135,46 +1095,6 @@ class GameScene: SKScene {
         }
         print("HEAL DEBUG: No NPC found at position")
         return nil
-    }
-
-    private func activateTriggerAt(_ position: HexCoord) -> Bool {
-        for (id, var element) in interactiveElements {
-            if element.position == position {
-                if case .trigger(let activatesId) = element.type {
-                    if !element.isCompleted {
-                        element.isCompleted = true
-                        interactiveElements[id] = element
-
-                        // Find and activate the linked element
-                        activateLinkedElement(id: activatesId)
-                        markInteractiveCompleted(id: id, message: "Triggered!")
-                        return true
-                    }
-                }
-            }
-        }
-        return false
-    }
-
-    private func activateLinkedElement(id linkedId: String) {
-        // Remove blocking obstacle with matching ID
-        for (id, element) in interactiveElements {
-            if case .obstacle(let obstId, _) = element.type, obstId == linkedId {
-                // Remove the obstacle from blocked hexes
-                blockedHexes.remove(element.position)
-
-                // Remove visual
-                if let sprite = interactiveSprites[id] {
-                    let fadeOut = SKAction.sequence([
-                        SKAction.fadeOut(withDuration: 0.3),
-                        SKAction.removeFromParent()
-                    ])
-                    sprite.run(fadeOut)
-                }
-                interactiveElements.removeValue(forKey: id)
-                showStatusText("Door opened!", at: worldToScreen(element.position), color: .cyan)
-            }
-        }
     }
 
     private func dispelDarknessAt(_ position: HexCoord) -> Bool {
@@ -1424,6 +1344,7 @@ class GameScene: SKScene {
         if spell.isAoE {
             statsText += "  AoE"
         }
+        let showMana = !isBlitz
         let manaText = spell.manaCost < 0 ? "Mana: +\(abs(spell.manaCost))" : "Mana: \(spell.manaCost)"
 
         // Measure text to size the card
@@ -1454,22 +1375,29 @@ class GameScene: SKScene {
         statsLabel.horizontalAlignmentMode = .center
         statsLabel.verticalAlignmentMode = .top
 
-        let manaLabel = SKLabelNode(fontNamed: "Cochin-Bold")
-        manaLabel.text = manaText
-        manaLabel.fontSize = bodyFontSize
-        manaLabel.fontColor = spell.manaCost < 0
-            ? SKColor(red: 0.3, green: 0.8, blue: 0.3, alpha: 1.0)
-            : SKColor(red: 0.9, green: 0.5, blue: 0.3, alpha: 1.0)
-        manaLabel.horizontalAlignmentMode = .center
-        manaLabel.verticalAlignmentMode = .top
+        var manaLabel: SKLabelNode?
+        if showMana {
+            let ml = SKLabelNode(fontNamed: "Cochin-Bold")
+            ml.text = manaText
+            ml.fontSize = bodyFontSize
+            ml.fontColor = spell.manaCost < 0
+                ? SKColor(red: 0.3, green: 0.8, blue: 0.3, alpha: 1.0)
+                : SKColor(red: 0.9, green: 0.5, blue: 0.3, alpha: 1.0)
+            ml.horizontalAlignmentMode = .center
+            ml.verticalAlignmentMode = .top
+            manaLabel = ml
+        }
 
         // Calculate card dimensions
+        let manaLineWidth = manaLabel?.frame.width ?? 0
         let maxTextWidth = max(
             nameLabel.frame.width,
-            max(descLabel.frame.width, max(statsLabel.frame.width, manaLabel.frame.width))
+            max(descLabel.frame.width, max(statsLabel.frame.width, manaLineWidth))
         )
         let cardWidth = maxTextWidth + padding * 2
-        let cardHeight = nameFontSize + bodyFontSize * 3 + lineSpacing * 4 + padding * 2
+        let lineCount: CGFloat = showMana ? 3 : 2  // desc + stats (+ mana)
+        let spacingCount: CGFloat = showMana ? 4 : 3
+        let cardHeight = nameFontSize + bodyFontSize * lineCount + lineSpacing * spacingCount + padding * 2
 
         // Background card
         let bg = SKShapeNode(rectOf: CGSize(width: cardWidth, height: cardHeight), cornerRadius: 8)
@@ -1491,9 +1419,11 @@ class GameScene: SKScene {
         statsLabel.position = CGPoint(x: 0, y: yPos)
         tooltip.addChild(statsLabel)
 
-        yPos -= bodyFontSize + lineSpacing
-        manaLabel.position = CGPoint(x: 0, y: yPos)
-        tooltip.addChild(manaLabel)
+        if let ml = manaLabel {
+            yPos -= bodyFontSize + lineSpacing
+            ml.position = CGPoint(x: 0, y: yPos)
+            tooltip.addChild(ml)
+        }
 
         // Position tooltip above spell bar
         let barY = spellBar?.position.y ?? 50
@@ -1576,7 +1506,10 @@ class GameScene: SKScene {
             if challengeTimeLimit > 0 && challengeTimer >= challengeTimeLimit {
                 showStatusText("Time's up!", at: CGPoint(x: size.width / 2, y: size.height / 2), color: .red)
                 player.takeDamage(1)
-                if !player.isAlive { showGameOver(); return }
+                if isBlitz {
+                    blitzTimer -= BlitzConfig.penaltyPerDamage
+                    if blitzTimer <= 0 { showGameOver(); return }
+                } else if !player.isAlive { showGameOver(); return }
                 challengeCompleted = true
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
                     self?.challengeCompleted = false
@@ -1588,7 +1521,10 @@ class GameScene: SKScene {
             if playerDetected {
                 showStatusText("Detected!", at: CGPoint(x: size.width / 2, y: size.height / 2), color: .red)
                 player.takeDamage(1)
-                if !player.isAlive { showGameOver(); return }
+                if isBlitz {
+                    blitzTimer -= BlitzConfig.penaltyPerDamage
+                    if blitzTimer <= 0 { showGameOver(); return }
+                } else if !player.isAlive { showGameOver(); return }
                 challengeCompleted = true
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
                     self?.challengeCompleted = false
@@ -1608,7 +1544,10 @@ class GameScene: SKScene {
             if challengeTimeLimit > 0 && challengeTimer >= challengeTimeLimit {
                 showStatusText("Time's up!", at: CGPoint(x: size.width / 2, y: size.height / 2), color: .red)
                 player.takeDamage(1)  // Penalty for failure
-                if !player.isAlive { showGameOver(); return }
+                if isBlitz {
+                    blitzTimer -= BlitzConfig.penaltyPerDamage
+                    if blitzTimer <= 0 { showGameOver(); return }
+                } else if !player.isAlive { showGameOver(); return }
                 challengeCompleted = true
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
                     self?.challengeCompleted = false
@@ -1623,7 +1562,10 @@ class GameScene: SKScene {
             if challengeTimeLimit > 0 && challengeTimer >= challengeTimeLimit {
                 showStatusText("Time's up!", at: CGPoint(x: size.width / 2, y: size.height / 2), color: .red)
                 player.takeDamage(1)
-                if !player.isAlive { showGameOver(); return }
+                if isBlitz {
+                    blitzTimer -= BlitzConfig.penaltyPerDamage
+                    if blitzTimer <= 0 { showGameOver(); return }
+                } else if !player.isAlive { showGameOver(); return }
                 challengeCompleted = true
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
                     self?.challengeCompleted = false
@@ -1637,6 +1579,12 @@ class GameScene: SKScene {
         if isComplete {
             challengeCompleted = true
             objectiveLabel?.text = "Victory!"
+
+            if isBlitz {
+                blitzTimer += BlitzConfig.bonusPerChallenge
+                let bonusText = String(format: "+%.1fs", BlitzConfig.bonusPerChallenge)
+                showStatusText(bonusText, at: CGPoint(x: size.width / 2, y: size.height / 2 + 40), color: SKColor(red: 0.9, green: 0.75, blue: 0.25, alpha: 1.0))
+            }
 
             let wait = SKAction.wait(forDuration: 1.5)
             let generate = SKAction.run { [weak self] in
@@ -1739,6 +1687,7 @@ class GameScene: SKScene {
             case .attack(_, let damage):
                 // Enemy attacks player
                 player.takeDamage(damage)
+                if isBlitz { blitzTimer -= BlitzConfig.penaltyPerDamage * Double(damage) }
                 checkPlayerDeath()
                 let screenPos = CGPoint(x: size.width / 2, y: size.height / 2)
                 showDamageNumber(damage, at: screenPos)
@@ -1755,6 +1704,7 @@ class GameScene: SKScene {
                     let affectedHexes = center.hexesInRange(radius)
                     if affectedHexes.contains(player.position) {
                         player.takeDamage(damage)
+                        if isBlitz { blitzTimer -= BlitzConfig.penaltyPerDamage * Double(damage) }
                         checkPlayerDeath()
                         let screenPos = CGPoint(x: size.width / 2, y: size.height / 2)
                         showDamageNumber(damage, at: screenPos)
@@ -1848,7 +1798,9 @@ class GameScene: SKScene {
     }
 
     private func checkPlayerDeath() {
-        if !player.isAlive {
+        if isBlitz {
+            if blitzTimer <= 0 { showGameOver() }
+        } else if !player.isAlive {
             showGameOver()
         }
     }
@@ -1921,8 +1873,21 @@ class GameScene: SKScene {
             playerWasMoving = true
         }
 
-        // Update spell bar (for mana costs, etc.)
-        spellBar?.updateSpellStates(currentMana: player.mana)
+        // Update spell bar (for mana costs, etc.) — skip in Blitz (all spells always enabled)
+        if !isBlitz {
+            spellBar?.updateSpellStates(currentMana: player.mana)
+        }
+
+        // Update blitz countdown timer
+        if isBlitz && !isGameOver {
+            blitzTimer -= dt
+            blitzTimerLabel?.text = String(format: "%.1fs", max(0, blitzTimer))
+            if blitzTimer <= 0 {
+                showGameOver()
+                lastUpdateTime = currentTime
+                return
+            }
+        }
 
         // Update challenge timer for timed/stealth/light-only-puzzle challenges
         let isTimed = currentChallenge?.type == .timed || currentChallenge?.type == .stealth

@@ -14,8 +14,8 @@ struct SpellData {
         description: "Wait, prompting enemies to act.",
         range: 0, offenseDie: 0, defenseDie: 0, manaCost: -2,
         isQuickCast: false, isPassive: false, noSave: false, isAoE: false,
-        hasAdvantage: false, causesParalysis: false, affectsMovement: false,
-        affectsObjects: false, producesLight: false, exchangesKnowledge: false
+        causesParalysis: false,
+        producesLight: false
     )
 
     static let allSpells: [Spell] = [
@@ -27,73 +27,73 @@ struct SpellData {
             description: "Become hazy, confusing nearby foes.",
             range: 0, offenseDie: 0, defenseDie: 0, manaCost: 0,
             isQuickCast: true, isPassive: true, noSave: true, isAoE: true,
-            hasAdvantage: false, causesParalysis: true, affectsMovement: false,
-            affectsObjects: false, producesLight: false, exchangesKnowledge: false
-        ),
-        Spell(
-            id: "spare-the-dying", name: "Spare the Dying",
-            description: "Keep a dying ally from death's door.",
-            range: 1, offenseDie: 0, defenseDie: 1, manaCost: 0,
-            isQuickCast: true, isPassive: false, noSave: true, isAoE: false,
-            hasAdvantage: false, causesParalysis: false, affectsMovement: false,
-            affectsObjects: false, producesLight: false, exchangesKnowledge: false
+            causesParalysis: true,
+            producesLight: false
         ),
         Spell(
             id: "brand", name: "Brand",
             description: "Light up a hex with a gleaming strike.",
             range: 1, offenseDie: 1, defenseDie: 0, manaCost: 0,
             isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
-            hasAdvantage: false, causesParalysis: false, affectsMovement: false,
-            affectsObjects: false, producesLight: true, exchangesKnowledge: false
+            causesParalysis: false,
+            producesLight: true
+        ),
+        Spell(
+            id: "spare-the-dying", name: "Spare the Dying",
+            description: "Keep a dying ally from death's door.",
+            range: 1, offenseDie: 0, defenseDie: 1, manaCost: 0,
+            isQuickCast: true, isPassive: false, noSave: true, isAoE: false,
+            causesParalysis: false,
+            producesLight: false
         ),
         // Mana 1
-        Spell(
-            id: "shocking-grasp", name: "Shocking Grasp",
-            description: "Electrically shock a hex.",
-            range: 1, offenseDie: 3, defenseDie: 0, manaCost: 1,
-            isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
-            hasAdvantage: false, causesParalysis: true, affectsMovement: false,
-            affectsObjects: false, producesLight: false, exchangesKnowledge: false
-        ),
         Spell(
             id: "burning-hands", name: "Burning Hands",
             description: "Conflagrate nearby hexes.",
             range: 1, offenseDie: 3, defenseDie: 0, manaCost: 1,
             isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
-            hasAdvantage: false, causesParalysis: false, affectsMovement: false,
-            affectsObjects: false, producesLight: false, exchangesKnowledge: false
+            causesParalysis: false,
+            producesLight: false
         ),
         Spell(
             id: "cure-wounds", name: "Cure Wounds",
             description: "Knit an ally's wounds together.",
             range: 1, offenseDie: 0, defenseDie: 2, manaCost: 1,
             isQuickCast: true, isPassive: false, noSave: true, isAoE: false,
-            hasAdvantage: false, causesParalysis: false, affectsMovement: false,
-            affectsObjects: false, producesLight: false, exchangesKnowledge: false
+            causesParalysis: false,
+            producesLight: false
         ),
         Spell(
             id: "life-transference", name: "Life Transference",
             description: "Take the life force of an enemy.",
             range: 1, offenseDie: 1, defenseDie: 1, manaCost: 1,
             isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
-            hasAdvantage: false, causesParalysis: false, affectsMovement: false,
-            affectsObjects: false, producesLight: false, exchangesKnowledge: false
+            causesParalysis: false,
+            producesLight: false
         ),
         Spell(
             id: "magic-missile", name: "Magic Missile",
             description: "Fling a dart of magical force.",
             range: 3, offenseDie: 1, defenseDie: 0, manaCost: 1,
             isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
-            hasAdvantage: false, causesParalysis: false, affectsMovement: false,
-            affectsObjects: false, producesLight: false, exchangesKnowledge: false
+            causesParalysis: false,
+            producesLight: false
+        ),
+        Spell(
+            id: "shocking-grasp", name: "Shocking Grasp",
+            description: "Electrically shock a hex.",
+            range: 1, offenseDie: 3, defenseDie: 0, manaCost: 1,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
+            causesParalysis: true,
+            producesLight: false
         ),
         Spell(
             id: "thunderwave", name: "Thunderwave",
             description: "Harm nearby foes with thunder.",
             range: 0, offenseDie: 3, defenseDie: 0, manaCost: 1,
             isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
-            hasAdvantage: false, causesParalysis: false, affectsMovement: false,
-            affectsObjects: false, producesLight: false, exchangesKnowledge: false
+            causesParalysis: false,
+            producesLight: false
         ),
         // Mana 2
         Spell(
@@ -101,48 +101,124 @@ struct SpellData {
             description: "Hurl a brittle vial of explosive acid.",
             range: 2, offenseDie: 3, defenseDie: 0, manaCost: 2,
             isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
-            hasAdvantage: false, causesParalysis: false, affectsMovement: false,
-            affectsObjects: false, producesLight: false, exchangesKnowledge: false
+            causesParalysis: false,
+            producesLight: false
         ),
         Spell(
             id: "black-tentacles", name: "Black Tentacles",
             description: "Spawn crushing tendrils nearby.",
             range: 0, offenseDie: 3, defenseDie: 0, manaCost: 2,
             isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
-            hasAdvantage: false, causesParalysis: true, affectsMovement: false,
-            affectsObjects: false, producesLight: false, exchangesKnowledge: false
+            causesParalysis: true,
+            producesLight: false
         ),
         Spell(
             id: "blight", name: "Blight",
             description: "Drain a hex, crumbling it.",
             range: 2, offenseDie: 5, defenseDie: 0, manaCost: 2,
             isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
-            hasAdvantage: false, causesParalysis: false, affectsMovement: false,
-            affectsObjects: false, producesLight: false, exchangesKnowledge: false
+            causesParalysis: false,
+            producesLight: false
         ),
         Spell(
             id: "chill-touch", name: "Chill Touch",
             description: "Grip a hex with a ghostly, skeletal hand.",
             range: 3, offenseDie: 1, defenseDie: 0, manaCost: 2,
             isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
-            hasAdvantage: false, causesParalysis: true, affectsMovement: false,
-            affectsObjects: false, producesLight: false, exchangesKnowledge: false
+            causesParalysis: true,
+            producesLight: false
         ),
         Spell(
             id: "mass-cure", name: "Mass Cure",
             description: "Pray that nearby allies be healed.",
             range: 1, offenseDie: 0, defenseDie: 2, manaCost: 2,
             isQuickCast: true, isPassive: false, noSave: true, isAoE: true,
-            hasAdvantage: false, causesParalysis: false, affectsMovement: false,
-            affectsObjects: false, producesLight: false, exchangesKnowledge: false
+            causesParalysis: false,
+            producesLight: false
         ),
         Spell(
             id: "sleet-storm", name: "Sleet Storm",
             description: "Summon a chilling, blinding storm.",
-            range: 2, offenseDie: 1, defenseDie: 0, manaCost: 2,
+            range: 1, offenseDie: 3, defenseDie: 0, manaCost: 2,
             isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
-            hasAdvantage: false, causesParalysis: true, affectsMovement: false,
-            affectsObjects: false, producesLight: false, exchangesKnowledge: false
+            causesParalysis: true,
+            producesLight: false
+        ),
+    ]
+
+    /// Blitz mode spells — no mana, upgraded offense dice, combat-only
+    static let blitzSpells: [Spell] = [
+        Spell(
+            id: "acid-splash", name: "Acid Splash",
+            description: "Hurl a brittle vial of explosive acid.",
+            range: 2, offenseDie: 6, defenseDie: 0, manaCost: 0,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
+            causesParalysis: false,
+            producesLight: false
+        ),
+        Spell(
+            id: "black-tentacles", name: "Black Tentacles",
+            description: "Spawn crushing tendrils nearby.",
+            range: 0, offenseDie: 6, defenseDie: 0, manaCost: 0,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
+            causesParalysis: true,
+            producesLight: false
+        ),
+        Spell(
+            id: "blight", name: "Blight",
+            description: "Drain a hex, crumbling it.",
+            range: 1, offenseDie: 10, defenseDie: 0, manaCost: 0,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
+            causesParalysis: false,
+            producesLight: false
+        ),
+        Spell(
+            id: "burning-hands", name: "Burning Hands",
+            description: "Conflagrate nearby hexes.",
+            range: 1, offenseDie: 8, defenseDie: 0, manaCost: 0,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
+            causesParalysis: false,
+            producesLight: false
+        ),
+        Spell(
+            id: "chill-touch", name: "Chill Touch",
+            description: "Grip a hex with a ghostly, skeletal hand.",
+            range: 3, offenseDie: 4, defenseDie: 0, manaCost: 0,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
+            causesParalysis: true,
+            producesLight: false
+        ),
+        Spell(
+            id: "magic-missile", name: "Magic Missile",
+            description: "Fling a dart of magical force.",
+            range: 3, offenseDie: 6, defenseDie: 0, manaCost: 0,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
+            causesParalysis: false,
+            producesLight: false
+        ),
+        Spell(
+            id: "shocking-grasp", name: "Shocking Grasp",
+            description: "Electrically shock a hex.",
+            range: 1, offenseDie: 8, defenseDie: 0, manaCost: 0,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
+            causesParalysis: true,
+            producesLight: false
+        ),
+        Spell(
+            id: "sleet-storm", name: "Sleet Storm",
+            description: "Summon a chilling, blinding storm.",
+            range: 1, offenseDie: 6, defenseDie: 0, manaCost: 0,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
+            causesParalysis: true,
+            producesLight: false
+        ),
+        Spell(
+            id: "thunderwave", name: "Thunderwave",
+            description: "Harm nearby foes with thunder.",
+            range: 0, offenseDie: 8, defenseDie: 0, manaCost: 0,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
+            causesParalysis: false,
+            producesLight: false
         ),
     ]
 

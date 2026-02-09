@@ -275,11 +275,6 @@ class Enemy: GKEntity {
         onPositionChanged?(position)
     }
 
-    func teleportTo(_ coord: HexCoord) {
-        position = coord
-        onPositionChanged?(position)
-    }
-
     // MARK: - Merge Support
 
     static func behaviorPriority(_ behavior: EnemyBehavior) -> Int {
@@ -335,7 +330,6 @@ enum EnemyAction {
 
     enum SpecialAttackType {
         case areaSlam    // Damages all hexes around boss
-        case charge      // Rush in a line
         case summon      // Create minions
     }
 }
@@ -343,13 +337,18 @@ enum EnemyAction {
 // MARK: - Enemy Factory
 
 struct EnemyFactory {
+    /// Blitz spells deal 2-4x more damage, so enemies need proportionally more HP
+    private static var hpMultiplier: Int {
+        GameManager.shared.gameMode == .blitz ? 2 : 1
+    }
+
     static func createEnemy(from element: ChallengeElement, at position: HexCoord) -> Enemy? {
         switch element.type {
         case .enemy(let hp, let damage, let behavior):
-            return Enemy(hp: hp, damage: damage, behavior: behavior, position: position)
+            return Enemy(hp: hp * hpMultiplier, damage: damage, behavior: behavior, position: position)
 
         case .invisibleEnemy(let hp, let damage):
-            let enemy = Enemy(hp: hp, damage: damage, behavior: .aggressive, position: position)
+            let enemy = Enemy(hp: hp * hpMultiplier, damage: damage, behavior: .aggressive, position: position)
             // Mark as invisible (visual handling elsewhere)
             return enemy
 
@@ -358,15 +357,4 @@ struct EnemyFactory {
         }
     }
 
-    static func createSwarm(count: Int, around center: HexCoord, hp: Int = 1, damage: Int = 1) -> [Enemy] {
-        var enemies: [Enemy] = []
-        let positions = center.hexesInRange(2).shuffled().prefix(count)
-
-        for pos in positions {
-            let enemy = Enemy(hp: hp, damage: damage, behavior: .swarm, position: pos)
-            enemies.append(enemy)
-        }
-
-        return enemies
-    }
 }
