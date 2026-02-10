@@ -466,19 +466,43 @@ struct SpellIcons {
             // Knuckles
             path.addEllipse(in: CGRect(x: -s * 0.15, y: s * 0.1, width: s * 0.3, height: s * 0.2))
 
-        case "mass-cure":
-            // Multiple plus signs / healing wave
-            path.move(to: CGPoint(x: -s * 0.6, y: 0))
-            path.addLine(to: CGPoint(x: -s * 0.2, y: 0))
-            path.move(to: CGPoint(x: -s * 0.4, y: -s * 0.2))
-            path.addLine(to: CGPoint(x: -s * 0.4, y: s * 0.2))
-            path.move(to: CGPoint(x: s * 0.2, y: 0))
-            path.addLine(to: CGPoint(x: s * 0.6, y: 0))
-            path.move(to: CGPoint(x: s * 0.4, y: -s * 0.2))
-            path.addLine(to: CGPoint(x: s * 0.4, y: s * 0.2))
-            // Wave under
-            path.move(to: CGPoint(x: -s * 0.8, y: -s * 0.6))
-            path.addCurve(to: CGPoint(x: s * 0.8, y: -s * 0.6), control1: CGPoint(x: -s * 0.3, y: -s * 0.9), control2: CGPoint(x: s * 0.3, y: -s * 0.3))
+        case "calm-emotions":
+            // Serene face with closed eyes
+            // Head circle
+            path.addArc(center: .zero, radius: s * 0.7, startAngle: 0, endAngle: .pi * 2, clockwise: false)
+            // Closed left eye (gentle arc)
+            path.move(to: CGPoint(x: -s * 0.45, y: s * 0.15))
+            path.addCurve(to: CGPoint(x: -s * 0.15, y: s * 0.15),
+                          control1: CGPoint(x: -s * 0.4, y: s * 0.3),
+                          control2: CGPoint(x: -s * 0.2, y: s * 0.3))
+            // Closed right eye
+            path.move(to: CGPoint(x: s * 0.15, y: s * 0.15))
+            path.addCurve(to: CGPoint(x: s * 0.45, y: s * 0.15),
+                          control1: CGPoint(x: s * 0.2, y: s * 0.3),
+                          control2: CGPoint(x: s * 0.4, y: s * 0.3))
+            // Peaceful smile
+            path.move(to: CGPoint(x: -s * 0.25, y: -s * 0.15))
+            path.addCurve(to: CGPoint(x: s * 0.25, y: -s * 0.15),
+                          control1: CGPoint(x: -s * 0.1, y: -s * 0.35),
+                          control2: CGPoint(x: s * 0.1, y: -s * 0.35))
+
+        case "private-sanctum":
+            // Shield with light rays
+            // Shield outline
+            path.move(to: CGPoint(x: 0, y: -s * 0.9))
+            path.addLine(to: CGPoint(x: -s * 0.6, y: -s * 0.3))
+            path.addLine(to: CGPoint(x: -s * 0.6, y: s * 0.3))
+            path.addLine(to: CGPoint(x: 0, y: s * 0.7))
+            path.addLine(to: CGPoint(x: s * 0.6, y: s * 0.3))
+            path.addLine(to: CGPoint(x: s * 0.6, y: -s * 0.3))
+            path.closeSubpath()
+            // Light rays from top
+            path.move(to: CGPoint(x: 0, y: s * 0.85))
+            path.addLine(to: CGPoint(x: 0, y: s))
+            path.move(to: CGPoint(x: -s * 0.3, y: s * 0.7))
+            path.addLine(to: CGPoint(x: -s * 0.45, y: s * 0.85))
+            path.move(to: CGPoint(x: s * 0.3, y: s * 0.7))
+            path.addLine(to: CGPoint(x: s * 0.45, y: s * 0.85))
 
         case "sleet-storm":
             // Snowflake
@@ -618,13 +642,15 @@ class SpellSlot: SKNode {
         fatalError("init(coder:) has not been implemented")
     }
 
-    private static func spellColor(for spell: Spell) -> SKColor {
+    static func spellColor(for spell: Spell) -> SKColor {
         if spell.isOffensive && spell.isDefensive {
             return SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 1.0)  // Gold - hybrid
         } else if spell.isOffensive && spell.causesParalysis {
             return SKColor(red: 0.7, green: 0.3, blue: 0.9, alpha: 1.0)  // Purple - damage + control
         } else if spell.isOffensive {
             return SKColor(red: 1.0, green: 0.4, blue: 0.3, alpha: 1.0)  // Red - damage
+        } else if spell.isDefensive && spell.causesParalysis {
+            return SKColor(red: 0.2, green: 0.95, blue: 0.8, alpha: 1.0)  // Mint - healing + control
         } else if spell.isDefensive {
             return SKColor(red: 0.3, green: 1.0, blue: 0.4, alpha: 1.0)  // Green - healing
         } else {

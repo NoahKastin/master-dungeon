@@ -22,7 +22,7 @@ struct InteractiveElement: Identifiable {
         case npc(currentHP: Int, maxHP: Int) // Must be healed to full
         case trigger(activatesId: String)    // Must be activated
         case obstacle(id: String, hp: Int)   // Destructible obstacle
-        case darkness(dispelled: Bool)       // Must be illuminated
+        case darkness(radius: Int, dispelled: Bool)  // Must be illuminated
     }
 }
 
@@ -366,13 +366,15 @@ class GameScene: SKScene {
             return
         }
 
-        // Highlight valid target hexes
+        // Highlight valid target hexes in spell color
         let range = spell.range
         let targetHexes = player.position.hexesInRange(range)
+        let color = SpellSlot.spellColor(for: spell).withAlphaComponent(0.6)
 
         for coord in targetHexes {
             let localCoord = coord - player.position
             if let hexSprite = hexSprites[localCoord] {
+                hexSprite.highlightColor = color
                 hexSprite.isHighlighted = true
                 highlightedHexes.append(localCoord)
             }
@@ -451,6 +453,11 @@ class GameScene: SKScene {
                     renderChallengeElementAt(element, worldPosition: worldPosition)
                 }
             }
+
+            // Update enemy visibility now that all darkness zones are registered
+            for enemy in activeEnemies {
+                updateEnemyDarknessVisibility(enemy)
+            }
         }
 
         updateGridPosition()
@@ -473,8 +480,8 @@ class GameScene: SKScene {
         case .trigger(let activates):
             return InteractiveElement(position: position, type: .trigger(activatesId: activates))
 
-        case .darkness:
-            return InteractiveElement(position: position, type: .darkness(dispelled: false))
+        case .darkness(let radius):
+            return InteractiveElement(position: position, type: .darkness(radius: radius, dispelled: false))
 
         case .obstacle(_, let destructible):
             if destructible {
@@ -505,6 +512,9 @@ class GameScene: SKScene {
         enemySprites[enemy.id] = sprite
         enemy.sprite = sprite
 
+        // Hide enemies spawned inside darkness
+        updateEnemyDarknessVisibility(enemy)
+
         // Setup callbacks
         enemy.onPositionChanged = { [weak self, weak enemy] newPos in
             guard let enemy = enemy else { return }
@@ -530,6 +540,9 @@ class GameScene: SKScene {
         let move = SKAction.move(to: targetPos, duration: 0.2)
         move.timingMode = .easeInEaseOut
         sprite.run(move)
+
+        // Reveal/hide based on darkness
+        updateEnemyDarknessVisibility(enemy)
     }
 
     private func updateEnemyHP(_ enemy: Enemy, hp: Int) {
@@ -540,7 +553,7 @@ class GameScene: SKScene {
             if currentChallenge?.type == .stealth {
                 return
             }
-            hpLabel.text = enemy.isMerged ? "+\(hp)" : "\(hp)"
+            hpLabel.text = "\(hp)"
         }
     }
 
@@ -943,7 +956,7 @@ class GameScene: SKScene {
                         damageDealt += damage
                         let screenPos = worldToScreen(hex)
                         showDamageNumber(damage, at: screenPos)
-                        showSpellFlash(color: .orange, at: screenPos)
+                        showSpellFlash(color: SpellSlot.spellColor(for: spell), at: screenPos)
                     }
                 }
             } else {
@@ -1101,8 +1114,8 @@ class GameScene: SKScene {
         for (id, var element) in interactiveElements {
             // Dispel darkness within range of the spell
             if position.distance(to: element.position) <= 3 {
-                if case .darkness(let dispelled) = element.type, !dispelled {
-                    element.type = .darkness(dispelled: true)
+                if case .darkness(let radius, let dispelled) = element.type, !dispelled {
+                    element.type = .darkness(radius: radius, dispelled: true)
                     element.isCompleted = true
                     interactiveElements[id] = element
 
@@ -1114,11 +1127,53 @@ class GameScene: SKScene {
                         ])
                         sprite.run(fadeOut)
                     }
+
+                    // Reveal enemies that were hidden in this darkness zone
+                    for enemy in activeEnemies where enemy.isAlive {
+                        if enemy.position.distance(to: element.position) <= radius {
+                            let wasHidden = enemySprites[enemy.id]?.alpha ?? 1.0 < 1.0
+                            updateEnemyDarknessVisibility(enemy)
+                            if wasHidden {
+                                let screenPos = worldToScreen(enemy.position)
+                                showStatusText("Revealed!", at: screenPos, color: .yellow)
+                            }
+                        }
+                    }
+
                     return true
                 }
             }
         }
         return false
+    }
+
+    private func isInActiveDarkness(_ position: HexCoord) -> Bool {
+        for (_, element) in interactiveElements {
+            if case .darkness(let radius, let dispelled) = element.type, !dispelled {
+                if position.distance(to: element.position) <= radius {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    private func updateEnemyDarknessVisibility(_ enemy: Enemy) {
+        guard let sprite = enemySprites[enemy.id] else { return }
+        let inDarkness = isInActiveDarkness(enemy.position)
+
+        if inDarkness {
+            sprite.alpha = 0.15
+            if let hpLabel = sprite.children.compactMap({ $0 as? SKLabelNode }).first {
+                hpLabel.text = "?"
+            }
+        } else {
+            sprite.alpha = 1.0
+            if let hpLabel = sprite.children.compactMap({ $0 as? SKLabelNode }).first {
+                let isStealth = currentChallenge?.type == .stealth
+                hpLabel.text = isStealth ? "∞" : "\(enemy.hp)"
+            }
+        }
     }
 
     private func damageObstacleAt(_ position: HexCoord, damage: Int) -> Bool {
@@ -1638,7 +1693,7 @@ class GameScene: SKScene {
     private func checkPuzzleSolved() -> Bool {
         for (_, element) in interactiveElements {
             switch element.type {
-            case .darkness(let dispelled):
+            case .darkness(_, let dispelled):
                 if !dispelled { return false }
             case .trigger:
                 if !element.isCompleted { return false }
@@ -1781,6 +1836,9 @@ class GameScene: SKScene {
         entityLayer.addChild(sprite)
         enemySprites[enemy.id] = sprite
         enemy.sprite = sprite
+
+        // Hide merged enemy if still in darkness
+        updateEnemyDarknessVisibility(enemy)
 
         // Setup callbacks
         enemy.onPositionChanged = { [weak self, weak enemy] _ in

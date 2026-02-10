@@ -250,6 +250,7 @@ class HexSprite: SKShapeNode {
     var isHighlighted: Bool = false {
         didSet { updateAppearance() }
     }
+    var highlightColor: SKColor = SKColor(red: 0.2, green: 0.4, blue: 0.6, alpha: 0.8)
 
     init(localCoord: HexCoord, layout: HexLayout) {
         self.localCoord = localCoord
@@ -288,7 +289,7 @@ class HexSprite: SKShapeNode {
 
     func updateAppearance() {
         if isHighlighted {
-            fillColor = SKColor(red: 0.2, green: 0.4, blue: 0.6, alpha: 0.8)
+            fillColor = highlightColor
         } else if isBlocked {
             fillColor = SKColor(white: 0.05, alpha: 0.9)
         } else {

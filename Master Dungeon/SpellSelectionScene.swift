@@ -533,6 +533,8 @@ class SpellCard: SKNode {
             return SKColor(red: 0.5, green: 0.2, blue: 0.7, alpha: 1.0)  // Purple - damage + control
         } else if spell.isOffensive {
             return SKColor(red: 0.8, green: 0.3, blue: 0.2, alpha: 1.0)  // Red - damage
+        } else if spell.isDefensive && spell.causesParalysis {
+            return SKColor(red: 0.15, green: 0.7, blue: 0.6, alpha: 1.0)  // Mint - healing + control
         } else if spell.isDefensive {
             return SKColor(red: 0.2, green: 0.7, blue: 0.3, alpha: 1.0)  // Green - healing
         } else {

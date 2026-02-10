@@ -80,6 +80,7 @@ struct ChallengeScenario {
 // MARK: - Challenge Generator
 
 class ChallengeGenerator {
+    static let hexRange = ChallengeAI.hexRange  // Max hex distance from player
     private let randomSource: GKRandomSource
     private var challengeHistory: [ChallengeType] = []
 
@@ -536,7 +537,7 @@ class ChallengeGenerator {
                 }
             }
 
-            if !avoiding.contains(pos) && pos.distance(to: .zero) <= 3 {
+            if !avoiding.contains(pos) && pos.distance(to: .zero) <= Self.hexRange {
                 return pos
             }
         }
@@ -552,7 +553,7 @@ class ChallengeGenerator {
         print("COMBAT PROC DEBUG: hasRangedAttack=\(analysis.hasRangedAttack)")
         if analysis.hasRangedAttack {
             if randomSource.nextBool() {
-                let rangedPos = randomPosition(minDistance: 3, maxDistance: 3, avoiding: usedPositions)
+                let rangedPos = randomPosition(minDistance: Self.hexRange, maxDistance: Self.hexRange, avoiding: usedPositions)
                 usedPositions.insert(rangedPos)
                 elements.append(ChallengeElement(
                     type: .enemy(hp: 1, damage: 1, behavior: .ranged),
@@ -568,7 +569,7 @@ class ChallengeGenerator {
                     properties: [:]
                 ))
 
-                let healerPos = randomPosition(minDistance: 3, maxDistance: 3, avoiding: usedPositions)
+                let healerPos = randomPosition(minDistance: Self.hexRange, maxDistance: Self.hexRange, avoiding: usedPositions)
                 usedPositions.insert(healerPos)
                 elements.append(ChallengeElement(
                     type: .enemy(hp: 2, damage: 1, behavior: .healer),
@@ -582,7 +583,7 @@ class ChallengeGenerator {
         if analysis.hasAoE {
             // Swarm: multiple weak enemies
             for _ in 0..<count {
-                let pos = randomPosition(minDistance: 2, maxDistance: 3, avoiding: usedPositions)
+                let pos = randomPosition(minDistance: 2, maxDistance: Self.hexRange, avoiding: usedPositions)
                 usedPositions.insert(pos)
                 elements.append(ChallengeElement(
                     type: .enemy(hp: 1, damage: 1, behavior: .swarm),
@@ -592,7 +593,7 @@ class ChallengeGenerator {
             }
         } else if analysis.hasRangedAttack {
             // Defensive enemy at range
-            let pos = randomPosition(minDistance: 3, maxDistance: 3, avoiding: usedPositions)
+            let pos = randomPosition(minDistance: Self.hexRange, maxDistance: Self.hexRange, avoiding: usedPositions)
             usedPositions.insert(pos)
             elements.append(ChallengeElement(
                 type: .enemy(hp: 2 + difficulty, damage: 1, behavior: .defensive),
@@ -601,7 +602,7 @@ class ChallengeGenerator {
             ))
         } else {
             // Aggressive enemy for melee
-            let pos = randomPosition(minDistance: 2, maxDistance: 3, avoiding: usedPositions)
+            let pos = randomPosition(minDistance: 2, maxDistance: Self.hexRange, avoiding: usedPositions)
             usedPositions.insert(pos)
             elements.append(ChallengeElement(
                 type: .enemy(hp: 2 + difficulty, damage: 1, behavior: .aggressive),
@@ -612,7 +613,7 @@ class ChallengeGenerator {
 
         // Add invisible enemy if player can detect
         if analysis.hasInformation && randomSource.nextBool() {
-            let pos = randomPosition(minDistance: 2, maxDistance: 3, avoiding: usedPositions)
+            let pos = randomPosition(minDistance: 2, maxDistance: Self.hexRange, avoiding: usedPositions)
             usedPositions.insert(pos)
             elements.append(ChallengeElement(
                 type: .invisibleEnemy(hp: 2, damage: 1),
@@ -621,14 +622,25 @@ class ChallengeGenerator {
             ))
         }
 
-        // Add darkness if player has illumination
+        // Add darkness if player has illumination, with a hidden enemy inside
         if analysis.hasIllumination && randomSource.nextBool() {
-            let darknessPos = randomPosition(minDistance: 2, maxDistance: 3, avoiding: usedPositions)
+            let darknessPos = randomPosition(minDistance: 1, maxDistance: Self.hexRange - 1, avoiding: usedPositions)
             elements.append(ChallengeElement(
                 type: .darkness(radius: 2),
                 position: darknessPos,
                 properties: [:]
             ))
+
+            // Move an existing enemy into the darkness zone instead of adding a new one
+            let darknessHexes = darknessPos.hexesInRange(2).filter { !usedPositions.contains($0) && $0 != .zero && $0.distance(to: .zero) <= Self.hexRange }
+            if !darknessHexes.isEmpty,
+               let enemyIdx = elements.indices.first(where: { if case .enemy = elements[$0].type { return true }; return false }) {
+                let newPos = darknessHexes[randomSource.nextInt(upperBound: darknessHexes.count)]
+                usedPositions.remove(elements[enemyIdx].position)
+                usedPositions.insert(newPos)
+                let old = elements[enemyIdx]
+                elements[enemyIdx] = ChallengeElement(type: old.type, position: newPos, properties: old.properties)
+            }
         }
 
         return elements
@@ -699,7 +711,7 @@ class ChallengeGenerator {
             }
 
             // Target at random position
-            let targetPos = randomPosition(minDistance: 3, maxDistance: 3, avoiding: usedPositions)
+            let targetPos = randomPosition(minDistance: Self.hexRange, maxDistance: Self.hexRange, avoiding: usedPositions)
             usedPositions.insert(targetPos)
             elements.append(ChallengeElement(
                 type: .target(required: true),
@@ -724,7 +736,7 @@ class ChallengeGenerator {
         }
 
         // Hidden target
-        let targetPos = randomPosition(minDistance: 3, maxDistance: 3, avoiding: usedPositions)
+        let targetPos = randomPosition(minDistance: Self.hexRange, maxDistance: Self.hexRange, avoiding: usedPositions)
         usedPositions.insert(targetPos)
         elements.append(ChallengeElement(
             type: .target(required: true),
@@ -750,7 +762,7 @@ class ChallengeGenerator {
 
         // Multiple enemies
         for _ in 0..<count {
-            let pos = randomPosition(minDistance: 2, maxDistance: 3, avoiding: usedPositions)
+            let pos = randomPosition(minDistance: 2, maxDistance: Self.hexRange, avoiding: usedPositions)
             usedPositions.insert(pos)
             elements.append(ChallengeElement(
                 type: .enemy(hp: 2 + difficulty, damage: 1, behavior: .aggressive),
@@ -777,7 +789,7 @@ class ChallengeGenerator {
         }
 
         // Target to reach
-        let targetPos = randomPosition(minDistance: 3, maxDistance: 3, avoiding: usedPositions)
+        let targetPos = randomPosition(minDistance: Self.hexRange, maxDistance: Self.hexRange, avoiding: usedPositions)
         usedPositions.insert(targetPos)
         elements.append(ChallengeElement(
             type: .target(required: true),
@@ -792,7 +804,7 @@ class ChallengeGenerator {
         var elements: [ChallengeElement] = []
 
         // NPC to rescue
-        let npcPos = randomPosition(minDistance: 2, maxDistance: 3, avoiding: usedPositions)
+        let npcPos = randomPosition(minDistance: 2, maxDistance: Self.hexRange, avoiding: usedPositions)
         usedPositions.insert(npcPos)
 
         if analysis.hasHealing {
@@ -810,7 +822,7 @@ class ChallengeGenerator {
         }
 
         // Enemy threatening NPC
-        let enemyPos = randomPosition(minDistance: 2, maxDistance: 3, avoiding: usedPositions)
+        let enemyPos = randomPosition(minDistance: 2, maxDistance: Self.hexRange, avoiding: usedPositions)
         usedPositions.insert(enemyPos)
         elements.append(ChallengeElement(
             type: .enemy(hp: 2, damage: 1, behavior: .aggressive),
@@ -827,7 +839,7 @@ class ChallengeGenerator {
         // Multiple targets arranged in a circle
         for i in 0..<count {
             let angle = Double(i) * (2.0 * .pi / Double(count))
-            let distance = 3
+            let distance = Self.hexRange
             let q = Int(round(cos(angle) * Double(distance)))
             let r = Int(round(sin(angle) * Double(distance)))
             let pos = HexCoord(q: q, r: r)

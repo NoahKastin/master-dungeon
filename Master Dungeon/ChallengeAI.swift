@@ -21,6 +21,7 @@ class ChallengeAI {
     private let randomSource: GKRandomSource
 
     // Configuration
+    static let hexRange = 3  // Max hex distance from player (matches GameScene.visibleRange)
     private let maxSimulationSteps = 50
     private let simulationRuns = 10
     private let maxGenerationAttempts = 20
@@ -112,7 +113,7 @@ class ChallengeAI {
             if canAttackAtRange {
                 return maxAttackRange
             } else {
-                return 3  // Walking distance
+                return ChallengeAI.hexRange
             }
         }
     }
@@ -145,14 +146,14 @@ class ChallengeAI {
             maxDamagePerTurn: maxDamage,
             canHeal: !healingSpells.isEmpty,
             maxHealPerTurn: maxHeal,
-            canAttackAtRange: maxRange >= 3,
+            canAttackAtRange: maxRange >= ChallengeAI.hexRange,
             maxAttackRange: maxRange,
             canAoE: !aoESpells.isEmpty,
             aoERadius: aoERadius,
             canCrowdControl: loadout.hasCapability(.crowdControl),
             canIlluminate: loadout.hasCapability(.illumination),
             canDetectHidden: loadout.hasCapability(.information),
-            totalMana: 10,  // Max mana
+            totalMana: Player.maxMana,
             spellCount: spells.count,
             averageManaCost: avgCost
         )
@@ -236,14 +237,14 @@ class ChallengeAI {
         }
 
         // CSP Constraint: Enemy distance based on player's range
-        let maxDistance = constraints.canAttackAtRange ? constraints.maxAttackRange : 3
+        let maxDistance = constraints.canAttackAtRange ? constraints.maxAttackRange : ChallengeAI.hexRange
 
         // Special case: Ranged attack players get ranged OR healer enemies (50/50)
         print("COMBAT CSP DEBUG: canAttackAtRange=\(constraints.canAttackAtRange)")
         if constraints.canAttackAtRange {
             if randomSource.nextBool() {
                 print("COMBAT CSP DEBUG: Spawning ranged enemy challenge!")
-                let rangedPos = randomValidPosition(minDist: 3, maxDist: 3, avoiding: usedPositions)
+                let rangedPos = randomValidPosition(minDist: ChallengeAI.hexRange, maxDist: ChallengeAI.hexRange, avoiding: usedPositions)
                 usedPositions.insert(rangedPos)
                 elements.append(ChallengeElement(
                     type: .enemy(hp: 1, damage: 1, behavior: .ranged),
@@ -261,7 +262,7 @@ class ChallengeAI {
                     properties: [:]
                 ))
 
-                let healerPos = randomValidPosition(minDist: 3, maxDist: 3, avoiding: usedPositions)
+                let healerPos = randomValidPosition(minDist: ChallengeAI.hexRange, maxDist: ChallengeAI.hexRange, avoiding: usedPositions)
                 usedPositions.insert(healerPos)
                 elements.append(ChallengeElement(
                     type: .enemy(hp: 2, damage: 1, behavior: .healer),
@@ -297,14 +298,25 @@ class ChallengeAI {
             ))
         }
 
-        // Add darkness only if player can illuminate
+        // Add darkness only if player can illuminate, with a hidden enemy inside
         if constraints.canIlluminate && randomSource.nextBool() {
-            let pos = randomValidPosition(minDist: 1, maxDist: 3, avoiding: usedPositions)
+            let darknessPos = randomValidPosition(minDist: 1, maxDist: ChallengeAI.hexRange - 1, avoiding: usedPositions)
             elements.append(ChallengeElement(
                 type: .darkness(radius: 2),
-                position: pos,
+                position: darknessPos,
                 properties: [:]
             ))
+
+            // Move an existing enemy into the darkness zone instead of adding a new one
+            let darknessHexes = darknessPos.hexesInRange(2).filter { !usedPositions.contains($0) && $0 != .zero && $0.distance(to: .zero) <= ChallengeAI.hexRange }
+            if !darknessHexes.isEmpty,
+               let enemyIdx = elements.indices.first(where: { if case .enemy = elements[$0].type { return true }; return false }) {
+                let newPos = darknessHexes[randomSource.nextInt(upperBound: darknessHexes.count)]
+                usedPositions.remove(elements[enemyIdx].position)
+                usedPositions.insert(newPos)
+                let old = elements[enemyIdx]
+                elements[enemyIdx] = ChallengeElement(type: old.type, position: newPos, properties: old.properties)
+            }
         }
 
         return elements
@@ -368,7 +380,7 @@ class ChallengeAI {
         }
 
         // Target (within 3-hex visible range)
-        let targetPos = randomValidPosition(minDist: 2, maxDist: 3, avoiding: usedPositions)
+        let targetPos = randomValidPosition(minDist: 2, maxDist: ChallengeAI.hexRange, avoiding: usedPositions)
         usedPositions.insert(targetPos)
         elements.append(ChallengeElement(
             type: .target(required: true),
@@ -397,7 +409,7 @@ class ChallengeAI {
         let hpPerEnemy = max(1, totalAllowedHP / enemyCount)
 
         for _ in 0..<enemyCount {
-            let pos = randomValidPosition(minDist: 2, maxDist: 3, avoiding: usedPositions)
+            let pos = randomValidPosition(minDist: 2, maxDist: ChallengeAI.hexRange, avoiding: usedPositions)
             usedPositions.insert(pos)
             elements.append(ChallengeElement(
                 type: .enemy(hp: hpPerEnemy, damage: 1, behavior: .aggressive),
@@ -444,7 +456,7 @@ class ChallengeAI {
     private func generateRescueCSP(constraints: ConstraintModel, usedPositions: inout Set<HexCoord>) -> [ChallengeElement] {
         var elements: [ChallengeElement] = []
 
-        let npcPos = randomValidPosition(minDist: 2, maxDist: 3, avoiding: usedPositions)
+        let npcPos = randomValidPosition(minDist: 2, maxDist: ChallengeAI.hexRange, avoiding: usedPositions)
         usedPositions.insert(npcPos)
 
         // CSP: NPC type based on player abilities
@@ -467,7 +479,7 @@ class ChallengeAI {
 
         // Enemy - must be defeatable
         if constraints.canDealDamage {
-            let enemyPos = randomValidPosition(minDist: 2, maxDist: 3, avoiding: usedPositions)
+            let enemyPos = randomValidPosition(minDist: 2, maxDist: ChallengeAI.hexRange, avoiding: usedPositions)
             usedPositions.insert(enemyPos)
             elements.append(ChallengeElement(
                 type: .enemy(hp: min(constraints.maxEnemyHP, 3), damage: 1, behavior: .aggressive),
@@ -488,7 +500,7 @@ class ChallengeAI {
         // Arrange targets in reachable pattern
         for i in 0..<targetCount {
             let angle = Double(i) * (2.0 * .pi / Double(targetCount))
-            let distance = min(3, constraints.maxChallengeDistance)
+            let distance = min(ChallengeAI.hexRange, constraints.maxChallengeDistance)
             let q = Int(round(cos(angle) * Double(distance)))
             let r = Int(round(sin(angle) * Double(distance)))
             let pos = HexCoord(q: q, r: r)
@@ -553,7 +565,7 @@ class ChallengeAI {
     private struct SimulationState {
         var playerPosition: HexCoord = .zero
         var playerHP: Int = 5
-        var playerMana: Int = 10
+        var playerMana: Int = Player.maxMana
         var enemies: [(position: HexCoord, hp: Int, damage: Int)]
         var targets: Set<HexCoord>
         var npcsToHeal: [(position: HexCoord, currentHP: Int, maxHP: Int)]
@@ -685,7 +697,7 @@ class ChallengeAI {
         newState.turnsElapsed += 1
 
         // Mana regeneration
-        newState.playerMana = min(10, newState.playerMana + 1)
+        newState.playerMana = min(Player.maxMana, newState.playerMana + 1)
 
         switch action {
         case .move(let dest):
@@ -812,7 +824,7 @@ class ChallengeAI {
                 }
             }
 
-            if !avoiding.contains(pos) && pos.distance(to: .zero) <= 3 {
+            if !avoiding.contains(pos) && pos.distance(to: .zero) <= ChallengeAI.hexRange {
                 return pos
             }
         }

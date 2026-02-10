@@ -129,12 +129,20 @@ struct SpellData {
             producesLight: false
         ),
         Spell(
-            id: "mass-cure", name: "Mass Cure",
-            description: "Pray that nearby allies be healed.",
-            range: 1, offenseDie: 0, defenseDie: 2, manaCost: 2,
+            id: "calm-emotions", name: "Calm Emotions",
+            description: "Soothe nearby foes into a stupor.",
+            range: 1, offenseDie: 0, defenseDie: 1, manaCost: 2,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
+            causesParalysis: true,
+            producesLight: false
+        ),
+        Spell(
+            id: "private-sanctum", name: "Private Sanctum",
+            description: "Ward nearby hexes with protective light.",
+            range: 1, offenseDie: 0, defenseDie: 1, manaCost: 2,
             isQuickCast: true, isPassive: false, noSave: true, isAoE: true,
             causesParalysis: false,
-            producesLight: false
+            producesLight: true
         ),
         Spell(
             id: "sleet-storm", name: "Sleet Storm",
