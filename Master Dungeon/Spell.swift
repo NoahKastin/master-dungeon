@@ -88,15 +88,18 @@ enum SpellCapability: String, CaseIterable {
     case quickCast        // Fast to cast
 }
 
-/// A loadout of spells that a player has selected (max 3 spells plus Pass)
+/// A loadout of spells that a player has selected (max 3 spells plus Pass/Potion)
 struct SpellLoadout {
-    static let maxSpells = 3  // Maximum selectable spells (not counting Pass)
+    static let maxSpells = 3  // Maximum selectable spells (not counting Pass/Potion)
+
+    /// Spell IDs that are auto-included and don't count toward the 3-spell limit
+    private static let lockedSpellIDs: Set<String> = ["pass", "potion"]
 
     private(set) var spells: [Spell] = []
 
-    /// Count of selectable spells (excludes Pass)
+    /// Count of selectable spells (excludes Pass/Potion)
     var selectableSpellCount: Int {
-        spells.filter { $0.id != "pass" }.count
+        spells.filter { !Self.lockedSpellIDs.contains($0.id) }.count
     }
 
     var totalManaCost: Int {
@@ -104,14 +107,15 @@ struct SpellLoadout {
     }
 
     var allCapabilities: Set<SpellCapability> {
-        spells.reduce(into: Set<SpellCapability>()) { result, spell in
-            result.formUnion(spell.capabilityTags)
-        }
+        spells.filter { !Self.lockedSpellIDs.contains($0.id) }
+            .reduce(into: Set<SpellCapability>()) { result, spell in
+                result.formUnion(spell.capabilityTags)
+            }
     }
 
     mutating func addSpell(_ spell: Spell) -> Bool {
-        // Pass spell is always allowed
-        if spell.id == "pass" {
+        // Pass/Potion are always allowed
+        if Self.lockedSpellIDs.contains(spell.id) {
             if !spells.contains(spell) {
                 spells.insert(spell, at: 0)
             }
@@ -129,8 +133,8 @@ struct SpellLoadout {
     }
 
     mutating func removeSpell(_ spell: Spell) {
-        // Pass cannot be removed
-        guard spell.id != "pass" else { return }
+        // Pass/Potion cannot be removed
+        guard !Self.lockedSpellIDs.contains(spell.id) else { return }
         spells.removeAll { $0 == spell }
     }
 

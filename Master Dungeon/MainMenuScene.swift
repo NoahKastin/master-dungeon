@@ -17,7 +17,7 @@ class MainMenuScene: SKScene {
     private var mediumButton: SKShapeNode!
     private var hardButton: SKShapeNode!
     private var extremeButton: SKShapeNode!
-    private var elixirButton: SKShapeNode!
+    private var rainbowButton: SKShapeNode!
     private var teamButton: SKShapeNode!
     private var blitzButton: SKShapeNode!
     private var howToPlayButton: SKShapeNode!
@@ -72,24 +72,22 @@ class MainMenuScene: SKScene {
         easyLabel.alpha = 0.4
         addChild(easyLabel)
 
-        // "Medium" button (green, locked)
+        // "Medium" button (green)
         mediumButton = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 12)
         mediumButton.fillColor = SKColor(red: 0.2, green: 0.6, blue: 0.3, alpha: 1.0)
         mediumButton.strokeColor = SKColor(red: 0.3, green: 0.8, blue: 0.4, alpha: 1.0)
         mediumButton.lineWidth = 2
         mediumButton.position = CGPoint(x: leftX, y: buttonTopY - buttonSpacing)
         mediumButton.zPosition = 10
-        mediumButton.alpha = 0.4
         addChild(mediumButton)
 
         let mediumLabel = SKLabelNode(fontNamed: "Cochin-Bold")
-        mediumLabel.text = "Medium \u{1F512}"
+        mediumLabel.text = "Medium"
         mediumLabel.fontSize = 18
         mediumLabel.fontColor = .white
         mediumLabel.verticalAlignmentMode = .center
         mediumLabel.position = mediumButton.position
         mediumLabel.zPosition = 11
-        mediumLabel.alpha = 0.4
         addChild(mediumLabel)
 
         // "Hard" button (gold)
@@ -130,30 +128,31 @@ class MainMenuScene: SKScene {
 
         // --- Right Column ---
 
-        // "Elixir" button (blue, locked — matches Easy)
-        elixirButton = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 12)
-        elixirButton.fillColor = SKColor(red: 0.2, green: 0.4, blue: 0.7, alpha: 1.0)
-        elixirButton.strokeColor = SKColor(red: 0.3, green: 0.5, blue: 0.9, alpha: 1.0)
-        elixirButton.lineWidth = 2
-        elixirButton.position = CGPoint(x: rightX, y: buttonTopY)
-        elixirButton.zPosition = 10
-        elixirButton.alpha = 0.4
-        addChild(elixirButton)
+        // "Rainbow" button (rainbow gradient, locked)
+        rainbowButton = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 12)
+        rainbowButton.fillColor = .white
+        rainbowButton.fillTexture = makeRainbowTexture(width: buttonWidth, height: buttonHeight)
+        rainbowButton.strokeColor = SKColor(red: 0.9, green: 0.3, blue: 0.7, alpha: 1.0)
+        rainbowButton.lineWidth = 2
+        rainbowButton.position = CGPoint(x: rightX, y: buttonTopY)
+        rainbowButton.zPosition = 10
+        rainbowButton.alpha = 0.4
+        addChild(rainbowButton)
 
-        let elixirLabel = SKLabelNode(fontNamed: "Cochin-Bold")
-        elixirLabel.text = "Elixir \u{1F512}"
-        elixirLabel.fontSize = 18
-        elixirLabel.fontColor = .white
-        elixirLabel.verticalAlignmentMode = .center
-        elixirLabel.position = elixirButton.position
-        elixirLabel.zPosition = 11
-        elixirLabel.alpha = 0.4
-        addChild(elixirLabel)
+        let rainbowLabel = SKLabelNode(fontNamed: "Cochin-Bold")
+        rainbowLabel.text = "Rainbow \u{1F512}"
+        rainbowLabel.fontSize = 18
+        rainbowLabel.fontColor = .white
+        rainbowLabel.verticalAlignmentMode = .center
+        rainbowLabel.position = rainbowButton.position
+        rainbowLabel.zPosition = 11
+        rainbowLabel.alpha = 0.4
+        addChild(rainbowLabel)
 
-        // "Team" button (green, locked — matches Medium)
+        // "Team" button (purple, locked)
         teamButton = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 12)
-        teamButton.fillColor = SKColor(red: 0.2, green: 0.6, blue: 0.3, alpha: 1.0)
-        teamButton.strokeColor = SKColor(red: 0.3, green: 0.8, blue: 0.4, alpha: 1.0)
+        teamButton.fillColor = SKColor(red: 0.45, green: 0.2, blue: 0.7, alpha: 1.0)
+        teamButton.strokeColor = SKColor(red: 0.6, green: 0.3, blue: 0.9, alpha: 1.0)
         teamButton.lineWidth = 2
         teamButton.position = CGPoint(x: rightX, y: buttonTopY - buttonSpacing)
         teamButton.zPosition = 10
@@ -170,10 +169,10 @@ class MainMenuScene: SKScene {
         teamLabel.alpha = 0.4
         addChild(teamLabel)
 
-        // "Blitz" button (gold — matches Hard)
+        // "Blitz" button (mint)
         blitzButton = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 12)
-        blitzButton.fillColor = SKColor(red: 0.7, green: 0.55, blue: 0.15, alpha: 1.0)
-        blitzButton.strokeColor = SKColor(red: 0.9, green: 0.75, blue: 0.25, alpha: 1.0)
+        blitzButton.fillColor = SKColor(red: 0.15, green: 0.7, blue: 0.6, alpha: 1.0)
+        blitzButton.strokeColor = SKColor(red: 0.2, green: 0.95, blue: 0.8, alpha: 1.0)
         blitzButton.lineWidth = 2
         blitzButton.position = CGPoint(x: rightX, y: buttonTopY - buttonSpacing * 2)
         blitzButton.zPosition = 10
@@ -225,7 +224,7 @@ class MainMenuScene: SKScene {
         let halfWidth: CGFloat = 70
         let halfHeight: CGFloat = 25
 
-        let buttons = [hardButton!, extremeButton!, blitzButton!, howToPlayButton!]
+        let buttons = [mediumButton!, hardButton!, extremeButton!, blitzButton!, howToPlayButton!]
         for button in buttons {
             let bounds = CGRect(
                 x: button.position.x - halfWidth,
@@ -255,7 +254,9 @@ class MainMenuScene: SKScene {
 
         if isLongPress {
             // Long press — show mode description (only for mode buttons)
-            if button === hardButton {
+            if button === mediumButton {
+                showModeDescription("A familiar RPG-like mode.")
+            } else if button === hardButton {
                 showModeDescription("Less health, longer range.")
             } else if button === extremeButton {
                 showModeDescription("One mistake ends it all.")
@@ -264,7 +265,9 @@ class MainMenuScene: SKScene {
             }
         } else {
             // Short tap — start mode or show help
-            if button === hardButton {
+            if button === mediumButton {
+                startMediumMode()
+            } else if button === hardButton {
                 startHardMode()
             } else if button === extremeButton {
                 startExtremeMode()
@@ -282,6 +285,14 @@ class MainMenuScene: SKScene {
     }
 
     // MARK: - Navigation
+
+    private func startMediumMode() {
+        GameManager.shared.gameMode = .medium
+        let spellScene = SpellSelectionScene(size: size)
+        spellScene.scaleMode = scaleMode
+        let transition = SKTransition.fade(withDuration: 0.5)
+        view?.presentScene(spellScene, transition: transition)
+    }
 
     private func startHardMode() {
         GameManager.shared.gameMode = .normal
@@ -451,5 +462,33 @@ class MainMenuScene: SKScene {
             SKAction.removeFromParent()
         ]))
         helpOverlay = nil
+    }
+
+    // MARK: - Helpers
+
+    private func makeRainbowTexture(width: CGFloat, height: CGFloat) -> SKTexture {
+        let scale = view?.window?.screen.scale ?? UITraitCollection.current.displayScale
+        let w = Int(width * scale)
+        let h = Int(height * scale)
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let colors = [
+            SKColor(red: 0.6, green: 0.2, blue: 0.2, alpha: 1.0).cgColor,   // Red (Extreme)
+            SKColor(red: 0.7, green: 0.55, blue: 0.15, alpha: 1.0).cgColor,  // Gold (Hard)
+            SKColor(red: 0.2, green: 0.6, blue: 0.3, alpha: 1.0).cgColor,   // Green (Medium)
+            SKColor(red: 0.15, green: 0.7, blue: 0.6, alpha: 1.0).cgColor,  // Mint (Blitz)
+            SKColor(red: 0.2, green: 0.4, blue: 0.7, alpha: 1.0).cgColor,   // Blue (Easy)
+            SKColor(red: 0.45, green: 0.2, blue: 0.7, alpha: 1.0).cgColor,  // Purple (Team)
+        ] as CFArray
+        let locations: [CGFloat] = [0, 0.2, 0.4, 0.6, 0.8, 1.0]
+        let gradient = CGGradient(colorsSpace: colorSpace, colors: colors, locations: locations)!
+        let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8,
+                            bytesPerRow: w * 4, space: colorSpace,
+                            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        ctx.drawLinearGradient(gradient,
+                               start: CGPoint(x: 0, y: 0),
+                               end: CGPoint(x: CGFloat(w), y: 0),
+                               options: [])
+        let image = ctx.makeImage()!
+        return SKTexture(cgImage: image)
     }
 }

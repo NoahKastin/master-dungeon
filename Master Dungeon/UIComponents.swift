@@ -41,7 +41,13 @@ class ManaDisplay: SKNode {
         let halfGap = gapWidth / 2
 
         let halfPath = CGMutablePath()
-        if index == 0 {
+        if maxMana == 1 {
+            // Full circle for single mana
+            halfPath.addArc(center: .zero, radius: r,
+                            startAngle: 0, endAngle: .pi * 2, clockwise: false)
+            halfPath.closeSubpath()
+            container.position = .zero
+        } else if index == 0 {
             // Left semicircle: arc from top to bottom going through left
             halfPath.move(to: CGPoint(x: -halfGap, y: r))
             halfPath.addArc(center: CGPoint(x: -halfGap, y: 0), radius: r,
@@ -71,7 +77,12 @@ class ManaDisplay: SKNode {
         if filled {
             let hlPath = CGMutablePath()
             let hr = r * 0.55
-            if index == 0 {
+            if maxMana == 1 {
+                // Full circle highlight
+                hlPath.addArc(center: CGPoint(x: -r * 0.15, y: r * 0.1), radius: hr,
+                              startAngle: 0, endAngle: .pi * 2, clockwise: false)
+                hlPath.closeSubpath()
+            } else if index == 0 {
                 hlPath.addArc(center: CGPoint(x: -halfGap - r * 0.15, y: r * 0.1), radius: hr,
                               startAngle: .pi / 2, endAngle: .pi * 3 / 2, clockwise: false)
                 hlPath.closeSubpath()
@@ -123,6 +134,10 @@ class HPDisplay: SKNode {
     private var currentHP = Player.maxHP
     private var heartNodes: [SKNode] = []
 
+    /// In medium mode (8 HP), each heart represents 2 HP (shown via half-filling)
+    private let hpPerHeart: Int = Player.maxHP > 4 ? 2 : 1
+    private var heartCount: Int { (maxHP + hpPerHeart - 1) / hpPerHeart }
+
     private let heartSize: CGFloat = 24
     private let heartSpacing: CGFloat = 4
 
@@ -136,75 +151,111 @@ class HPDisplay: SKNode {
     }
 
     private func createHearts() {
-        for i in 0..<maxHP {
-            let heart = createHeartNode(filled: true)
+        for i in 0..<heartCount {
+            let heart = createHeartNode(fill: .full)
             heart.position = CGPoint(x: CGFloat(i) * (heartSize + heartSpacing), y: 0)
             addChild(heart)
             heartNodes.append(heart)
         }
     }
 
-    private func createHeartNode(filled: Bool) -> SKNode {
-        let container = SKNode()
+    private enum HeartFill { case full, half, empty }
 
-        // Heart shape - right-side up (point at bottom, lobes at top)
-        let heartPath = CGMutablePath()
+    private func heartPath() -> CGPath {
+        let path = CGMutablePath()
         let s = heartSize / 2
+        path.move(to: CGPoint(x: 0, y: -s))
+        path.addCurve(to: CGPoint(x: -s, y: s * 0.3),
+                       control1: CGPoint(x: -s * 0.5, y: -s),
+                       control2: CGPoint(x: -s, y: -s * 0.2))
+        path.addCurve(to: CGPoint(x: 0, y: 0),
+                       control1: CGPoint(x: -s, y: s * 0.8),
+                       control2: CGPoint(x: -s * 0.3, y: s * 0.3))
+        path.addCurve(to: CGPoint(x: s, y: s * 0.3),
+                       control1: CGPoint(x: s * 0.3, y: s * 0.3),
+                       control2: CGPoint(x: s, y: s * 0.8))
+        path.addCurve(to: CGPoint(x: 0, y: -s),
+                       control1: CGPoint(x: s, y: -s * 0.2),
+                       control2: CGPoint(x: s * 0.5, y: -s))
+        path.closeSubpath()
+        return path
+    }
 
-        // Start at bottom point, draw right-side up heart
-        heartPath.move(to: CGPoint(x: 0, y: -s))  // Bottom tip
+    private func createHeartNode(fill: HeartFill) -> SKNode {
+        let container = SKNode()
+        let path = heartPath()
 
-        // Left side: curve up to left lobe
-        heartPath.addCurve(
-            to: CGPoint(x: -s, y: s * 0.3),       // Left lobe peak
-            control1: CGPoint(x: -s * 0.5, y: -s),
-            control2: CGPoint(x: -s, y: -s * 0.2)
-        )
+        if fill == .half {
+            // Empty outline first
+            let emptyShape = SKShapeNode(path: path)
+            emptyShape.fillColor = SKColor(white: 0.3, alpha: 0.5)
+            emptyShape.strokeColor = SKColor(white: 0.2, alpha: 0.5)
+            emptyShape.lineWidth = 1.5
+            container.addChild(emptyShape)
 
-        // Top left: curve to center dip
-        heartPath.addCurve(
-            to: CGPoint(x: 0, y: 0),              // Center dip
-            control1: CGPoint(x: -s, y: s * 0.8),
-            control2: CGPoint(x: -s * 0.3, y: s * 0.3)
-        )
+            // Filled left half via crop
+            let filledShape = SKShapeNode(path: path)
+            filledShape.fillColor = SKColor(red: 0.9, green: 0.2, blue: 0.2, alpha: 1.0)
+            filledShape.strokeColor = SKColor(red: 0.6, green: 0.1, blue: 0.1, alpha: 1.0)
+            filledShape.lineWidth = 1.5
 
-        // Top right: curve to right lobe
-        heartPath.addCurve(
-            to: CGPoint(x: s, y: s * 0.3),        // Right lobe peak
-            control1: CGPoint(x: s * 0.3, y: s * 0.3),
-            control2: CGPoint(x: s, y: s * 0.8)
-        )
+            let crop = SKCropNode()
+            let mask = SKShapeNode(rectOf: CGSize(width: heartSize, height: heartSize * 2))
+            mask.fillColor = .white
+            mask.position = CGPoint(x: -heartSize / 2, y: 0)
+            crop.maskNode = mask
+            crop.addChild(filledShape)
+            container.addChild(crop)
+        } else {
+            let filled = fill == .full
+            let heartShape = SKShapeNode(path: path)
+            heartShape.fillColor = filled ? SKColor(red: 0.9, green: 0.2, blue: 0.2, alpha: 1.0) : SKColor(white: 0.3, alpha: 0.5)
+            heartShape.strokeColor = filled ? SKColor(red: 0.6, green: 0.1, blue: 0.1, alpha: 1.0) : SKColor(white: 0.2, alpha: 0.5)
+            heartShape.lineWidth = 1.5
+            container.addChild(heartShape)
+        }
 
-        // Right side: curve back to bottom point
-        heartPath.addCurve(
-            to: CGPoint(x: 0, y: -s),             // Back to bottom tip
-            control1: CGPoint(x: s, y: -s * 0.2),
-            control2: CGPoint(x: s * 0.5, y: -s)
-        )
-        heartPath.closeSubpath()
+        // Vertical divider line when each heart represents 2 HP
+        if hpPerHeart == 2 {
+            let s = heartSize / 2
+            let divider = SKShapeNode()
+            let linePath = CGMutablePath()
+            linePath.move(to: CGPoint(x: 0, y: s * 0.0))
+            linePath.addLine(to: CGPoint(x: 0, y: -s))
+            divider.path = linePath
+            divider.strokeColor = SKColor(white: 0.0, alpha: 0.4)
+            divider.lineWidth = 1.0
+            container.addChild(divider)
+        }
 
-        let heartShape = SKShapeNode(path: heartPath)
-        heartShape.fillColor = filled ? SKColor(red: 0.9, green: 0.2, blue: 0.2, alpha: 1.0) : SKColor(white: 0.3, alpha: 0.5)
-        heartShape.strokeColor = filled ? SKColor(red: 0.6, green: 0.1, blue: 0.1, alpha: 1.0) : SKColor(white: 0.2, alpha: 0.5)
-        heartShape.lineWidth = 1.5
-
-        container.addChild(heartShape)
         return container
     }
 
     func setHP(_ hp: Int) {
         currentHP = max(0, min(maxHP, hp))
 
-        // Update heart visuals
         for (index, heartNode) in heartNodes.enumerated() {
             heartNode.removeAllChildren()
 
-            let filled = index < currentHP
-            let heart = createHeartNode(filled: filled).children.first!.copy() as! SKShapeNode
-            heartNode.addChild(heart)
+            let hpForThisHeart = currentHP - index * hpPerHeart
+            let fill: HeartFill
+            if hpForThisHeart >= hpPerHeart {
+                fill = .full
+            } else if hpForThisHeart == 1 && hpPerHeart == 2 {
+                fill = .half
+            } else if hpForThisHeart > 0 {
+                fill = .full
+            } else {
+                fill = .empty
+            }
+
+            let heart = createHeartNode(fill: fill)
+            for child in heart.children {
+                heartNode.addChild(child.copy() as! SKNode)
+            }
 
             // Animate damage
-            if !filled && index == currentHP {
+            if fill == .empty && hpForThisHeart == 0 && (index * hpPerHeart) < currentHP + hpPerHeart && (index * hpPerHeart) >= currentHP {
                 let scale = SKAction.sequence([
                     SKAction.scale(to: 1.3, duration: 0.1),
                     SKAction.scale(to: 1.0, duration: 0.1)
@@ -337,6 +388,19 @@ struct SpellIcons {
             path.addLine(to: CGPoint(x: s * 0.5, y: -s))
             path.addLine(to: CGPoint(x: -s * 0.5, y: -s))
             path.addLine(to: CGPoint(x: 0, y: 0))
+            path.closeSubpath()
+
+        case "potion":
+            // Potion bottle
+            path.move(to: CGPoint(x: -s * 0.2, y: s))
+            path.addLine(to: CGPoint(x: s * 0.2, y: s))
+            path.addLine(to: CGPoint(x: s * 0.2, y: s * 0.5))
+            path.addLine(to: CGPoint(x: s * 0.5, y: 0))
+            path.addLine(to: CGPoint(x: s * 0.5, y: -s * 0.7))
+            path.addArc(center: CGPoint(x: 0, y: -s * 0.7), radius: s * 0.5,
+                         startAngle: 0, endAngle: .pi, clockwise: false)
+            path.addLine(to: CGPoint(x: -s * 0.5, y: 0))
+            path.addLine(to: CGPoint(x: -s * 0.2, y: s * 0.5))
             path.closeSubpath()
 
         case "stealth":

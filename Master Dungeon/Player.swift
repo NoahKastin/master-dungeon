@@ -12,11 +12,14 @@ class Player: GKEntity {
     // MARK: - Constants
     static var maxHP: Int {
         switch GameManager.shared.gameMode {
+        case .medium: return 10
         case .hardcore: return 1
         case .normal, .blitz: return 4
         }
     }
-    static let maxMana = 2
+    static var maxMana: Int {
+        GameManager.shared.gameMode == .medium ? 1 : 2
+    }
 
     // MARK: - State
     private(set) var hp: Int = Player.maxHP

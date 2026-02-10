@@ -8,6 +8,7 @@
 import Foundation
 
 enum GameMode {
+    case medium
     case normal
     case hardcore
     case blitz

@@ -21,10 +21,19 @@ class ChallengeAI {
     private let randomSource: GKRandomSource
 
     // Configuration
-    static let hexRange = 3  // Max hex distance from player (matches GameScene.visibleRange)
+    static var hexRange: Int { GameManager.shared.gameMode == .medium ? 2 : 3 }
     private let maxSimulationSteps = 50
     private let simulationRuns = 10
     private let maxGenerationAttempts = 20
+
+    /// Enemy damage for the current mode. Medium uses d1-d3 weighted low; others use 1.
+    private func enemyDamage(strong: Bool = false) -> Int {
+        guard GameManager.shared.gameMode == .medium else { return 1 }
+        if strong {
+            return randomSource.nextInt(upperBound: 3) < 2 ? 2 : 3
+        }
+        return randomSource.nextInt(upperBound: 3) < 2 ? 1 : 2
+    }
 
     init(seed: UInt64? = nil) {
         if let seed = seed {
@@ -146,7 +155,7 @@ class ChallengeAI {
             maxDamagePerTurn: maxDamage,
             canHeal: !healingSpells.isEmpty,
             maxHealPerTurn: maxHeal,
-            canAttackAtRange: maxRange >= ChallengeAI.hexRange,
+            canAttackAtRange: maxRange >= 2,
             maxAttackRange: maxRange,
             canAoE: !aoESpells.isEmpty,
             aoERadius: aoERadius,
@@ -240,32 +249,29 @@ class ChallengeAI {
         let maxDistance = constraints.canAttackAtRange ? constraints.maxAttackRange : ChallengeAI.hexRange
 
         // Special case: Ranged attack players get ranged OR healer enemies (50/50)
-        print("COMBAT CSP DEBUG: canAttackAtRange=\(constraints.canAttackAtRange)")
         if constraints.canAttackAtRange {
             if randomSource.nextBool() {
-                print("COMBAT CSP DEBUG: Spawning ranged enemy challenge!")
-                let rangedPos = randomValidPosition(minDist: ChallengeAI.hexRange, maxDist: ChallengeAI.hexRange, avoiding: usedPositions)
+                let rangedPos = randomValidPosition(minDist: constraints.maxAttackRange, maxDist: constraints.maxAttackRange, avoiding: usedPositions)
                 usedPositions.insert(rangedPos)
                 elements.append(ChallengeElement(
-                    type: .enemy(hp: 1, damage: 1, behavior: .ranged),
+                    type: .enemy(hp: 1, damage: enemyDamage(), behavior: .ranged),
                     position: rangedPos,
                     properties: [:]
                 ))
             } else {
-                print("COMBAT CSP DEBUG: Spawning healer enemy challenge!")
                 // Front-line enemy + healer support
                 let frontPos = randomValidPosition(minDist: 2, maxDist: 2, avoiding: usedPositions)
                 usedPositions.insert(frontPos)
                 elements.append(ChallengeElement(
-                    type: .enemy(hp: 3 + difficulty, damage: 1, behavior: .aggressive),
+                    type: .enemy(hp: 3 + difficulty, damage: enemyDamage(strong: true), behavior: .aggressive),
                     position: frontPos,
                     properties: [:]
                 ))
 
-                let healerPos = randomValidPosition(minDist: ChallengeAI.hexRange, maxDist: ChallengeAI.hexRange, avoiding: usedPositions)
+                let healerPos = randomValidPosition(minDist: constraints.maxAttackRange, maxDist: constraints.maxAttackRange, avoiding: usedPositions)
                 usedPositions.insert(healerPos)
                 elements.append(ChallengeElement(
-                    type: .enemy(hp: 2, damage: 1, behavior: .healer),
+                    type: .enemy(hp: 2, damage: enemyDamage(), behavior: .healer),
                     position: healerPos,
                     properties: [:]
                 ))
@@ -281,7 +287,7 @@ class ChallengeAI {
             let behavior: EnemyBehavior = constraints.canAttackAtRange ? .defensive : .aggressive
 
             elements.append(ChallengeElement(
-                type: .enemy(hp: hp, damage: 1, behavior: behavior),
+                type: .enemy(hp: hp, damage: enemyDamage(strong: !constraints.canAoE), behavior: behavior),
                 position: pos,
                 properties: [:]
             ))
@@ -292,7 +298,7 @@ class ChallengeAI {
             let pos = randomValidPosition(minDist: 2, maxDist: maxDistance, avoiding: usedPositions)
             usedPositions.insert(pos)
             elements.append(ChallengeElement(
-                type: .invisibleEnemy(hp: 2, damage: 1),
+                type: .invisibleEnemy(hp: 2, damage: enemyDamage()),
                 position: pos,
                 properties: [:]
             ))
@@ -412,7 +418,7 @@ class ChallengeAI {
             let pos = randomValidPosition(minDist: 2, maxDist: ChallengeAI.hexRange, avoiding: usedPositions)
             usedPositions.insert(pos)
             elements.append(ChallengeElement(
-                type: .enemy(hp: hpPerEnemy, damage: 1, behavior: .aggressive),
+                type: .enemy(hp: hpPerEnemy, damage: enemyDamage(strong: true), behavior: .aggressive),
                 position: pos,
                 properties: [:]
             ))
@@ -482,7 +488,7 @@ class ChallengeAI {
             let enemyPos = randomValidPosition(minDist: 2, maxDist: ChallengeAI.hexRange, avoiding: usedPositions)
             usedPositions.insert(enemyPos)
             elements.append(ChallengeElement(
-                type: .enemy(hp: min(constraints.maxEnemyHP, 3), damage: 1, behavior: .aggressive),
+                type: .enemy(hp: min(constraints.maxEnemyHP, 3), damage: enemyDamage(), behavior: .aggressive),
                 position: enemyPos,
                 properties: [:]
             ))
@@ -1004,42 +1010,41 @@ class ChallengeAI {
         case .combat, .survival:
             // Combat/Survival - spawn enemies
             // Ranged attack players get ranged OR healer enemies (50/50)
-            let hasRangedAttack = loadout.spells.contains(where: { $0.isOffensive && $0.range >= 3 })
+            let maxAttackRange = loadout.spells.filter { $0.isOffensive }.map { $0.range }.max() ?? 1
+            let hasRangedAttack = maxAttackRange >= 2
             if hasRangedAttack {
                 let isMale = Bool.random()
                 let pronoun = isMale ? "him" : "her"
                 let subject = isMale ? "he" : "she"
 
                 if Bool.random() {
-                    print("FALLBACK DEBUG: Spawning ranged enemy challenge")
                     elements.append(ChallengeElement(
-                        type: .enemy(hp: 1, damage: 1, behavior: .ranged),
-                        position: HexCoord(q: 3, r: 0),
+                        type: .enemy(hp: 1, damage: enemyDamage(), behavior: .ranged),
+                        position: HexCoord(q: maxAttackRange, r: 0),
                         properties: [:]
                     ))
                     description = "A distant archer takes aim! Shoot \(pronoun) before \(subject) shoots you!"
                 } else {
-                    print("FALLBACK DEBUG: Spawning healer enemy challenge")
                     elements.append(ChallengeElement(
-                        type: .enemy(hp: 3, damage: 1, behavior: .aggressive),
+                        type: .enemy(hp: 3, damage: enemyDamage(strong: true), behavior: .aggressive),
                         position: HexCoord(q: 2, r: 0),
                         properties: [:]
                     ))
                     elements.append(ChallengeElement(
-                        type: .enemy(hp: 2, damage: 1, behavior: .healer),
-                        position: HexCoord(q: 3, r: 0),
+                        type: .enemy(hp: 2, damage: enemyDamage(), behavior: .healer),
+                        position: HexCoord(q: maxAttackRange, r: 0),
                         properties: [:]
                     ))
                     description = "A healer supports an ally! Shoot \(pronoun) from range!"
                 }
             } else {
                 elements.append(ChallengeElement(
-                    type: .enemy(hp: 2, damage: 1, behavior: .aggressive),
+                    type: .enemy(hp: 2, damage: enemyDamage(strong: true), behavior: .aggressive),
                     position: HexCoord(q: 2, r: 0),
                     properties: [:]
                 ))
                 elements.append(ChallengeElement(
-                    type: .enemy(hp: 1, damage: 1, behavior: .defensive),
+                    type: .enemy(hp: 1, damage: enemyDamage(), behavior: .defensive),
                     position: HexCoord(q: 2, r: 1),
                     properties: [:]
                 ))

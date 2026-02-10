@@ -84,9 +84,15 @@ class SpellSelectionScene: SKScene {
 
         // Subtitle
         let subtitleLabel = SKLabelNode(fontNamed: "Cochin")
-        subtitleLabel.text = GameManager.shared.gameMode == .blitz
-            ? "Select up to 3 spells"
-            : "Select up to 3 spells (Pass is always available)"
+        let mode = GameManager.shared.gameMode
+        switch mode {
+        case .blitz:
+            subtitleLabel.text = "Select up to 3 spells"
+        case .medium:
+            subtitleLabel.text = "Select up to 3 spells (Potion is always available)"
+        default:
+            subtitleLabel.text = "Select up to 3 spells (Pass is always available)"
+        }
         subtitleLabel.fontSize = 14
         subtitleLabel.fontColor = SKColor(white: 0.7, alpha: 1.0)
         subtitleLabel.position = CGPoint(x: size.width / 2, y: size.height - safeTop - 55)
@@ -183,21 +189,26 @@ class SpellSelectionScene: SKScene {
     }
 
     private func setupSpellGrid() {
-        let isBlitz = GameManager.shared.gameMode == .blitz
+        let gameMode = GameManager.shared.gameMode
         var spells: [Spell]
 
-        if isBlitz {
+        if gameMode == .blitz {
             // Blitz mode: no Pass, use dedicated Blitz spell list
             spells = SpellData.blitzSpells
+        } else if gameMode == .medium {
+            // Medium mode: Potion first, then medium spells sorted by mana cost
+            spells = [SpellData.potionSpell]
+            let availableSpells = SpellData.mediumSpells.filter { $0.id != "potion" }
+            spells.append(contentsOf: availableSpells.sorted { $0.manaCost < $1.manaCost })
         } else {
-            // Put Pass first, then other spells sorted by mana cost
+            // Normal/Hardcore: Pass first, then other spells sorted by mana cost
             spells = [SpellData.passSpell]
             let hardcoreSpellIDs: Set<String> = [
                 "shocking-grasp", "burning-hands", "magic-missile",
                 "acid-splash", "black-tentacles", "blight", "chill-touch", "sleet-storm"
             ]
             let availableSpells = SpellData.allSpells.filter { spell in
-                spell.id != "pass" && (GameManager.shared.gameMode == .normal || hardcoreSpellIDs.contains(spell.id))
+                spell.id != "pass" && (gameMode == .normal || hardcoreSpellIDs.contains(spell.id))
             }
             spells.append(contentsOf: availableSpells.sorted { $0.manaCost < $1.manaCost })
         }
@@ -225,8 +236,8 @@ class SpellSelectionScene: SKScene {
             contentNode.addChild(card)
             spellCards.append(card)
 
-            // Auto-select Pass and mark it as locked
-            if spell.id == "pass" {
+            // Auto-select Pass/Potion and mark it as locked
+            if spell.id == "pass" || spell.id == "potion" {
                 _ = loadout.addSpell(spell)
                 selectedCards.insert(spell.id)
                 card.setSelected(true)
@@ -359,8 +370,8 @@ class SpellSelectionScene: SKScene {
     private func toggleSpell(_ card: SpellCard) {
         let spell = card.spell
 
-        // Pass cannot be toggled off
-        if spell.id == "pass" {
+        // Pass/Potion cannot be toggled off
+        if spell.id == "pass" || spell.id == "potion" {
             return
         }
 
@@ -386,7 +397,7 @@ class SpellSelectionScene: SKScene {
 
         // Update affordability for all cards
         for otherCard in spellCards {
-            if !selectedCards.contains(otherCard.spell.id) && otherCard.spell.id != "pass" {
+            if !selectedCards.contains(otherCard.spell.id) && otherCard.spell.id != "pass" && otherCard.spell.id != "potion" {
                 otherCard.setAffordable(loadout.canAfford(otherCard.spell))
             }
         }

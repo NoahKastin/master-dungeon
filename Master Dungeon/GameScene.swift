@@ -29,7 +29,7 @@ struct InteractiveElement: Identifiable {
 class GameScene: SKScene {
 
     // MARK: - Constants
-    static let visibleRange = 3  // Hexes visible in each direction
+    static var visibleRange: Int { GameManager.shared.gameMode == .medium ? 2 : 3 }
     private var hexSize: CGFloat = 40.0  // Calculated dynamically based on screen size
 
     // MARK: - Entities
@@ -233,7 +233,7 @@ class GameScene: SKScene {
             blitzTimer = BlitzConfig.startTime
             let timerLabel = SKLabelNode(fontNamed: "Cochin-Bold")
             timerLabel.fontSize = 22
-            timerLabel.fontColor = SKColor(red: 0.9, green: 0.75, blue: 0.25, alpha: 1.0)
+            timerLabel.fontColor = SKColor(red: 0.2, green: 0.95, blue: 0.8, alpha: 1.0)
             timerLabel.horizontalAlignmentMode = .left
             timerLabel.verticalAlignmentMode = .center
             timerLabel.position = CGPoint(x: 16, y: size.height - safeTop - 40)
@@ -426,7 +426,11 @@ class GameScene: SKScene {
             let isLightOnlyPuzzle = challenge.type == .puzzle
                 && challenge.requiredCapabilities == [.illumination]
             if challenge.type == .timed || challenge.type == .stealth || isLightOnlyPuzzle {
-                challengeTimeLimit = GameManager.shared.gameMode == .hardcore ? 5.0 : 10.0
+                switch GameManager.shared.gameMode {
+                case .hardcore: challengeTimeLimit = 5.0
+                case .medium: challengeTimeLimit = 15.0
+                default: challengeTimeLimit = 10.0
+                }
             }
 
             for element in challenge.elements {
