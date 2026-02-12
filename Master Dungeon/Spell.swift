@@ -23,6 +23,17 @@ struct Spell: Identifiable, Hashable {
     let isAoE: Bool             // Area of Effect
     let causesParalysis: Bool   // Paralysis (No Harm to You)
     let producesLight: Bool     // Lights
+    let watchName: String       // Short name for Apple Watch display
+
+    init(id: String, name: String, description: String, range: Int, offenseDie: Int, defenseDie: Int, manaCost: Int,
+         isQuickCast: Bool, isPassive: Bool, noSave: Bool, isAoE: Bool, causesParalysis: Bool, producesLight: Bool,
+         watchName: String = "") {
+        self.id = id; self.name = name; self.description = description; self.range = range
+        self.offenseDie = offenseDie; self.defenseDie = defenseDie; self.manaCost = manaCost
+        self.isQuickCast = isQuickCast; self.isPassive = isPassive; self.noSave = noSave; self.isAoE = isAoE
+        self.causesParalysis = causesParalysis; self.producesLight = producesLight
+        self.watchName = watchName.isEmpty ? name : watchName
+    }
 
     // Computed properties
     var averageOffense: Double { offenseDie > 0 ? Double(offenseDie + 1) / 2.0 : 0.0 }

@@ -21,7 +21,13 @@ class ChallengeAI {
     private let randomSource: GKRandomSource
 
     // Configuration
-    static var hexRange: Int { GameManager.shared.gameMode == .medium ? 2 : 3 }
+    static var hexRange: Int {
+        switch GameManager.shared.gameMode {
+        case .easy: return 1
+        case .medium: return 2
+        default: return 3
+        }
+    }
     static let bossInterval = 5
     static let bossBaseHP = 6
     // Boss damage uses enemyDamage(strong: true) for mode-aware scaling

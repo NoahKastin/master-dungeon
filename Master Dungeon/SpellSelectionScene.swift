@@ -86,7 +86,7 @@ class SpellSelectionScene: SKScene {
         let subtitleLabel = SKLabelNode(fontNamed: "Cochin")
         let mode = GameManager.shared.gameMode
         switch mode {
-        case .blitz:
+        case .easy, .blitz:
             subtitleLabel.text = "Select up to 3 spells"
         case .medium:
             subtitleLabel.text = "Select up to 3 spells (Potion is always available)"
@@ -107,7 +107,7 @@ class SpellSelectionScene: SKScene {
         manaLabel.position = CGPoint(x: 20, y: size.height - safeTop - 85)
         manaLabel.zPosition = 100
         updateManaLabel()
-        if GameManager.shared.gameMode != .blitz {
+        if GameManager.shared.gameMode.hasMana {
             addChild(manaLabel)
         }
 
@@ -192,7 +192,10 @@ class SpellSelectionScene: SKScene {
         let gameMode = GameManager.shared.gameMode
         var spells: [Spell]
 
-        if gameMode == .blitz {
+        if gameMode == .easy {
+            // Easy mode: no Pass/Potion, use dedicated Easy spell list
+            spells = SpellData.easySpells
+        } else if gameMode == .blitz {
             // Blitz mode: no Pass, use dedicated Blitz spell list
             spells = SpellData.blitzSpells
         } else if gameMode == .medium {
@@ -527,8 +530,8 @@ class SpellCard: SKNode {
         addChild(descLabel)
         addChild(iconNode)
         addChild(statsLabel)
-        // Hide mana cost label in Blitz mode (no mana system)
-        if GameManager.shared.gameMode != .blitz {
+        // Hide mana cost label in modes without mana
+        if GameManager.shared.gameMode.hasMana {
             addChild(costLabel)
         }
     }

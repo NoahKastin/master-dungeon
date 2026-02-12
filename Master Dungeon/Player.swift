@@ -12,6 +12,7 @@ class Player: GKEntity {
     // MARK: - Constants
     static var maxHP: Int {
         switch GameManager.shared.gameMode {
+        case .easy: return 16
         case .medium: return 10
         case .hardcore: return 1
         case .normal, .blitz: return 4
@@ -88,7 +89,7 @@ class Player: GKEntity {
     }
 
     func canCast(_ spell: Spell) -> Bool {
-        if GameManager.shared.gameMode == .blitz { return loadout.spells.contains(spell) }
+        if !GameManager.shared.gameMode.hasMana { return loadout.spells.contains(spell) }
         return loadout.spells.contains(spell) && mana >= spell.manaCost
     }
 
@@ -99,8 +100,8 @@ class Player: GKEntity {
             return .failure(.notInLoadout)
         }
 
-        let isBlitz = GameManager.shared.gameMode == .blitz
-        if !isBlitz {
+        let hasMana = GameManager.shared.gameMode.hasMana
+        if hasMana {
             guard mana >= spell.manaCost else {
                 return .failure(.insufficientMana)
             }
@@ -111,8 +112,8 @@ class Player: GKEntity {
             return .failure(.outOfRange)
         }
 
-        // Spend mana (skip in Blitz — no mana system)
-        if !isBlitz {
+        // Spend mana (skip in modes without mana)
+        if hasMana {
             mana = max(0, min(Player.maxMana, mana - spell.manaCost))
             onManaChanged?(mana)
         }

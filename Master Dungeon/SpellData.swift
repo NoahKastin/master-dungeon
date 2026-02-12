@@ -240,6 +240,82 @@ struct SpellData {
         ),
     ]
 
+    /// Easy mode spells — no mana, all range 1, 1-hex grid
+    static let easySpells: [Spell] = [
+        Spell(
+            id: "blight", name: "Blight",
+            description: "Drain a hex, crumbling it.",
+            range: 1, offenseDie: 3, defenseDie: 0, manaCost: 0,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
+            causesParalysis: false, producesLight: false,
+            watchName: "Blight"
+        ),
+        Spell(
+            id: "stealth", name: "Blur",
+            description: "Become hazy, confusing nearby foes.",
+            range: 1, offenseDie: 0, defenseDie: 0, manaCost: 0,
+            isQuickCast: true, isPassive: true, noSave: true, isAoE: true,
+            causesParalysis: true, producesLight: false,
+            watchName: "Blur"
+        ),
+        Spell(
+            id: "brand", name: "Brand",
+            description: "Light up a hex with a gleaming strike.",
+            range: 1, offenseDie: 1, defenseDie: 0, manaCost: 0,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
+            causesParalysis: false, producesLight: true,
+            watchName: "Brand"
+        ),
+        Spell(
+            id: "burning-hands", name: "Burning Hands",
+            description: "Conflagrate nearby hexes.",
+            range: 1, offenseDie: 1, defenseDie: 0, manaCost: 0,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
+            causesParalysis: false, producesLight: false,
+            watchName: "Burn"
+        ),
+        Spell(
+            id: "calm-emotions", name: "Calm Emotions",
+            description: "Calm hexes, healing or paralyzing.",
+            range: 1, offenseDie: 0, defenseDie: 1, manaCost: 0,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
+            causesParalysis: true, producesLight: false,
+            watchName: "Calm"
+        ),
+        Spell(
+            id: "cure-wounds", name: "Cure Wounds",
+            description: "Keep a dying ally from death's door.",
+            range: 1, offenseDie: 0, defenseDie: 3, manaCost: 0,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
+            causesParalysis: false, producesLight: false,
+            watchName: "Cure"
+        ),
+        Spell(
+            id: "life-transference", name: "Life Transference",
+            description: "Take the life force of an enemy.",
+            range: 1, offenseDie: 1, defenseDie: 1, manaCost: 0,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
+            causesParalysis: false, producesLight: false,
+            watchName: "Loot"
+        ),
+        Spell(
+            id: "private-sanctum", name: "Private Sanctum",
+            description: "Protect from damage and darkness.",
+            range: 1, offenseDie: 0, defenseDie: 1, manaCost: 0,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
+            causesParalysis: false, producesLight: true,
+            watchName: "Pray"
+        ),
+        Spell(
+            id: "shocking-grasp", name: "Shocking Grasp",
+            description: "Electrically shock a hex.",
+            range: 1, offenseDie: 1, defenseDie: 0, manaCost: 0,
+            isQuickCast: true, isPassive: false, noSave: false, isAoE: false,
+            causesParalysis: true, producesLight: false,
+            watchName: "Shock"
+        ),
+    ]
+
     /// Medium mode spells — 1 mana, weaker dice, 2-hex max range
     static let mediumSpells: [Spell] = [
         // Mana -1

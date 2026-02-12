@@ -8,10 +8,18 @@
 import Foundation
 
 enum GameMode {
+    case easy
     case medium
     case normal
     case hardcore
     case blitz
+
+    var hasMana: Bool {
+        switch self {
+        case .easy, .blitz: return false
+        default: return true
+        }
+    }
 }
 
 // MARK: - Blitz Timer Tuning

@@ -29,7 +29,13 @@ struct InteractiveElement: Identifiable {
 class GameScene: SKScene {
 
     // MARK: - Constants
-    static var visibleRange: Int { GameManager.shared.gameMode == .medium ? 2 : 3 }
+    static var visibleRange: Int {
+        switch GameManager.shared.gameMode {
+        case .easy: return 1
+        case .medium: return 2
+        default: return 3
+        }
+    }
     private var hexSize: CGFloat = 40.0  // Calculated dynamically based on screen size
 
     // MARK: - Entities
@@ -249,8 +255,8 @@ class GameScene: SKScene {
             hpDisplay = hp
         }
 
-        // Mana display (top center, between HP and back button) — hidden in Blitz
-        if !isBlitz {
+        // Mana display (top center, between HP and back button) — hidden in modes without mana
+        if GameManager.shared.gameMode.hasMana {
             let mana = ManaDisplay()
             mana.position = CGPoint(x: size.width / 2, y: size.height - safeTop - 40)
             uiLayer.addChild(mana)
@@ -381,7 +387,13 @@ class GameScene: SKScene {
 
         // Highlight valid target hexes in spell color
         let range = spell.range
-        let targetHexes = player.position.hexesInRange(range)
+        var targetHexes = player.position.hexesInRange(range)
+
+        // Easy mode: AoE spells cannot target the player's own hex
+        if GameManager.shared.gameMode == .easy && spell.isAoE {
+            targetHexes.removeAll { $0 == player.position }
+        }
+
         let color = SpellSlot.spellColor(for: spell).withAlphaComponent(0.6)
 
         for coord in targetHexes {
@@ -441,8 +453,9 @@ class GameScene: SKScene {
                 && challenge.requiredCapabilities == [.illumination]
             if challenge.type == .timed || challenge.type == .stealth || isLightOnlyPuzzle {
                 switch GameManager.shared.gameMode {
-                case .hardcore: challengeTimeLimit = 5.0
+                case .easy: challengeTimeLimit = 20.0
                 case .medium: challengeTimeLimit = 15.0
+                case .hardcore: challengeTimeLimit = 5.0
                 default: challengeTimeLimit = 10.0
                 }
             }
@@ -926,6 +939,11 @@ class GameScene: SKScene {
 
     private func handleHexTap(_ coord: HexCoord) {
         if let spell = selectedSpell {
+            // Easy mode: AoE spells cannot target the player's own hex
+            if GameManager.shared.gameMode == .easy && spell.isAoE && coord == player.position {
+                return
+            }
+
             // Cast selected spell at this hex
             let result = player.castSpell(spell, at: coord)
 

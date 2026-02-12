@@ -59,17 +59,15 @@ class MainMenuScene: SKScene {
         easyButton.lineWidth = 2
         easyButton.position = CGPoint(x: leftX, y: buttonTopY)
         easyButton.zPosition = 10
-        easyButton.alpha = 0.4
         addChild(easyButton)
 
         let easyLabel = SKLabelNode(fontNamed: "Cochin-Bold")
-        easyLabel.text = "Easy \u{1F512}"
+        easyLabel.text = "Easy"
         easyLabel.fontSize = 18
         easyLabel.fontColor = .white
         easyLabel.verticalAlignmentMode = .center
         easyLabel.position = easyButton.position
         easyLabel.zPosition = 11
-        easyLabel.alpha = 0.4
         addChild(easyLabel)
 
         // "Medium" button (green)
@@ -224,7 +222,7 @@ class MainMenuScene: SKScene {
         let halfWidth: CGFloat = 70
         let halfHeight: CGFloat = 25
 
-        let buttons = [mediumButton!, hardButton!, extremeButton!, blitzButton!, howToPlayButton!]
+        let buttons = [easyButton!, mediumButton!, hardButton!, extremeButton!, blitzButton!, howToPlayButton!]
         for button in buttons {
             let bounds = CGRect(
                 x: button.position.x - halfWidth,
@@ -254,18 +252,22 @@ class MainMenuScene: SKScene {
 
         if isLongPress {
             // Long press — show mode description (only for mode buttons)
-            if button === mediumButton {
+            if button === easyButton {
+                showModeDescription("A gentle introduction.")
+            } else if button === mediumButton {
                 showModeDescription("A familiar RPG-like mode.")
             } else if button === hardButton {
                 showModeDescription("Less health, longer range.")
             } else if button === extremeButton {
                 showModeDescription("One mistake ends it all.")
             } else if button === blitzButton {
-                showModeDescription("Beat the clock by blowing stuff up!")
+                showModeDescription("Beat the clock!")
             }
         } else {
             // Short tap — start mode or show help
-            if button === mediumButton {
+            if button === easyButton {
+                startEasyMode()
+            } else if button === mediumButton {
                 startMediumMode()
             } else if button === hardButton {
                 startHardMode()
@@ -285,6 +287,14 @@ class MainMenuScene: SKScene {
     }
 
     // MARK: - Navigation
+
+    private func startEasyMode() {
+        GameManager.shared.gameMode = .easy
+        let spellScene = SpellSelectionScene(size: size)
+        spellScene.scaleMode = scaleMode
+        let transition = SKTransition.fade(withDuration: 0.5)
+        view?.presentScene(spellScene, transition: transition)
+    }
 
     private func startMediumMode() {
         GameManager.shared.gameMode = .medium
