@@ -103,8 +103,8 @@ class ChallengeGenerator {
         // Analyze the loadout to understand what the player can do
         let analysis = analyzeLoadout(loadout)
 
-        // Select a challenge type that varies from recent history
-        let challengeType = selectVariedChallengeType(for: analysis)
+        // Boss intervals force combat; otherwise vary from recent history
+        let challengeType = ChallengeAI.isBossChallenge ? .combat : selectVariedChallengeType(for: analysis)
         print("CHALLENGE DEBUG: Selected type = \(challengeType), hasDamage = \(analysis.capabilities.contains(.damage))")
 
         // Try AI-generated challenge first (guaranteed solvable)
@@ -505,7 +505,11 @@ class ChallengeGenerator {
 
         switch scenario.type {
         case .combat:
-            elements = generateCombatElements(count: elementCount, analysis: analysis, difficulty: difficulty, usedPositions: &usedPositions)
+            if ChallengeAI.isBossChallenge {
+                elements = generateBossCombatElements(difficulty: difficulty, usedPositions: &usedPositions)
+            } else {
+                elements = generateCombatElements(count: elementCount, analysis: analysis, difficulty: difficulty, usedPositions: &usedPositions)
+            }
         case .obstacle:
             elements = generateObstacleElements(count: elementCount, analysis: analysis, usedPositions: &usedPositions)
         case .puzzle:
@@ -556,6 +560,23 @@ class ChallengeGenerator {
         }
         // Regular enemies: 1 or 2 (weighted toward 1)
         return randomSource.nextInt(upperBound: 3) < 2 ? 1 : 2
+    }
+
+    private func generateBossCombatElements(difficulty: Int, usedPositions: inout Set<HexCoord>) -> [ChallengeElement] {
+        var elements: [ChallengeElement] = []
+
+        let bossHP = ChallengeAI.bossBaseHP + difficulty
+        let bossDamage = enemyDamage(strong: true)
+        let bossPos = randomPosition(minDistance: 2, maxDistance: min(3, Self.hexRange), avoiding: usedPositions)
+        usedPositions.insert(bossPos)
+
+        elements.append(ChallengeElement(
+            type: .enemy(hp: bossHP, damage: bossDamage, behavior: .boss),
+            position: bossPos,
+            properties: [:]
+        ))
+
+        return elements
     }
 
     private func generateCombatElements(count: Int, analysis: LoadoutAnalysis, difficulty: Int, usedPositions: inout Set<HexCoord>) -> [ChallengeElement] {

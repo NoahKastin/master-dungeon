@@ -70,6 +70,7 @@ class GameScene: SKScene {
     private var hpDisplay: HPDisplay?
     private var spellBar: SpellBar?
     private var objectiveLabel: SKLabelNode?
+    private var scoreLabel: SKLabelNode?
     private var backButton: SKNode?
     private var isGameOver: Bool = false
 
@@ -281,6 +282,18 @@ class GameScene: SKScene {
         uiLayer.addChild(objective)
         objectiveLabel = objective
 
+        // Score counter (top right, left of back button)
+        let score = SKLabelNode(fontNamed: "Cochin-Bold")
+        score.fontSize = 18
+        score.fontColor = SKColor(red: 0.9, green: 0.85, blue: 0.5, alpha: 1.0)
+        score.horizontalAlignmentMode = .right
+        score.verticalAlignmentMode = .center
+        score.position = CGPoint(x: size.width - 95, y: size.height - safeTop - 40)
+        score.zPosition = 100
+        score.text = "Score: 0"
+        uiLayer.addChild(score)
+        scoreLabel = score
+
         // Back button (top right)
         let backContainer = SKNode()
         backContainer.position = CGPoint(x: size.width - 50, y: size.height - safeTop - 40)
@@ -391,7 +404,8 @@ class GameScene: SKScene {
     // MARK: - Challenge
 
     private func generateNewChallenge() {
-        currentChallenge = challengeGenerator.generateChallenge(for: player.loadout)
+        let difficulty = 1 + GameManager.shared.challengesCompleted / ChallengeAI.bossInterval
+        currentChallenge = challengeGenerator.generateChallenge(for: player.loadout, difficulty: difficulty)
         objectiveLabel?.text = currentChallenge?.description ?? "Explore!"
 
         // Clear old challenge sprites
@@ -903,6 +917,7 @@ class GameScene: SKScene {
     }
 
     private func returnToSpellSelection() {
+        GameManager.shared.challengesCompleted = 0
         let spellScene = SpellSelectionScene(size: size)
         spellScene.scaleMode = scaleMode
         let transition = SKTransition.fade(withDuration: 0.5)
@@ -961,6 +976,9 @@ class GameScene: SKScene {
                         let screenPos = worldToScreen(hex)
                         showDamageNumber(damage, at: screenPos)
                         showSpellFlash(color: SpellSlot.spellColor(for: spell), at: screenPos)
+                    } else if damageObstacleAt(hex, damage: spell.rollOffense()) {
+                        let screenPos = worldToScreen(hex)
+                        showSpellFlash(color: .orange, at: screenPos)
                     }
                 }
             } else {
@@ -1637,6 +1655,8 @@ class GameScene: SKScene {
 
         if isComplete {
             challengeCompleted = true
+            GameManager.shared.completeChallenge()
+            scoreLabel?.text = "Score: \(GameManager.shared.challengesCompleted)"
             objectiveLabel?.text = "Victory!"
 
             if isBlitz {

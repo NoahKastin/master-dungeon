@@ -99,7 +99,7 @@ struct SpellData {
         ),
         Spell(
             id: "thunderwave", name: "Thunderwave",
-            description: "Harm nearby foes with thunder.",
+            description: "Harm nearby hexes with thunder.",
             range: 0, offenseDie: 3, defenseDie: 0, manaCost: 1,
             isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
             causesParalysis: false,
@@ -232,7 +232,7 @@ struct SpellData {
         ),
         Spell(
             id: "thunderwave", name: "Thunderwave",
-            description: "Harm nearby foes with thunder.",
+            description: "Harm nearby hexes with thunder.",
             range: 0, offenseDie: 8, defenseDie: 0, manaCost: 0,
             isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
             causesParalysis: false,
@@ -279,7 +279,7 @@ struct SpellData {
         ),
         Spell(
             id: "thunderwave", name: "Thunderwave",
-            description: "Harm nearby foes with thunder.",
+            description: "Harm nearby hexes with thunder.",
             range: 0, offenseDie: 1, defenseDie: 0, manaCost: 0,
             isQuickCast: true, isPassive: false, noSave: false, isAoE: true,
             causesParalysis: false,

@@ -22,6 +22,9 @@ class ChallengeAI {
 
     // Configuration
     static var hexRange: Int { GameManager.shared.gameMode == .medium ? 2 : 3 }
+    static let bossInterval = 5
+    static let bossBaseHP = 6
+    // Boss damage uses enemyDamage(strong: true) for mode-aware scaling
     private let maxSimulationSteps = 50
     private let simulationRuns = 10
     private let maxGenerationAttempts = 20
@@ -59,6 +62,12 @@ class ChallengeAI {
 
                 // Step 3: Verify solvability with Monte Carlo simulation
                 let (solvable, confidence) = verifySolvability(challenge: candidate, loadout: loadout)
+
+                // Boss challenges accept a lower solvability bar — they're meant to be hard
+                let isBoss = Self.isBossChallenge
+                if isBoss && confidence >= 0.3 {
+                    return candidate
+                }
 
                 if solvable && confidence >= 0.7 {
                     // Step 4: Score the challenge quality
@@ -168,6 +177,12 @@ class ChallengeAI {
         )
     }
 
+    /// Whether the current challenge should be a boss encounter
+    static var isBossChallenge: Bool {
+        let completed = GameManager.shared.challengesCompleted
+        return completed > 0 && completed % bossInterval == 0
+    }
+
     /// Generate challenge using Constraint Satisfaction
     /// CSP ensures all elements satisfy the constraint model
     private func generateWithCSP(type: ChallengeType, constraints: ConstraintModel, difficulty: Int, attempt: Int) -> Challenge? {
@@ -177,7 +192,11 @@ class ChallengeAI {
         // CSP: Select elements that satisfy constraints
         switch type {
         case .combat:
-            elements = generateCombatCSP(constraints: constraints, difficulty: difficulty, usedPositions: &usedPositions)
+            if Self.isBossChallenge {
+                elements = generateBossCombatCSP(constraints: constraints, difficulty: difficulty, usedPositions: &usedPositions)
+            } else {
+                elements = generateCombatCSP(constraints: constraints, difficulty: difficulty, usedPositions: &usedPositions)
+            }
 
         case .obstacle:
             // Constraint: Player must be able to destroy obstacles
@@ -324,6 +343,23 @@ class ChallengeAI {
                 elements[enemyIdx] = ChallengeElement(type: old.type, position: newPos, properties: old.properties)
             }
         }
+
+        return elements
+    }
+
+    private func generateBossCombatCSP(constraints: ConstraintModel, difficulty: Int, usedPositions: inout Set<HexCoord>) -> [ChallengeElement] {
+        var elements: [ChallengeElement] = []
+
+        let bossHP = Self.bossBaseHP + difficulty
+        let bossDamage = enemyDamage(strong: true)
+        let bossPos = randomValidPosition(minDist: 2, maxDist: min(3, ChallengeAI.hexRange), avoiding: usedPositions)
+        usedPositions.insert(bossPos)
+
+        elements.append(ChallengeElement(
+            type: .enemy(hp: bossHP, damage: bossDamage, behavior: .boss),
+            position: bossPos,
+            properties: [:]
+        ))
 
         return elements
     }
@@ -572,7 +608,7 @@ class ChallengeAI {
         var playerPosition: HexCoord = .zero
         var playerHP: Int = 5
         var playerMana: Int = Player.maxMana
-        var enemies: [(position: HexCoord, hp: Int, damage: Int)]
+        var enemies: [(position: HexCoord, hp: Int, damage: Int, behavior: EnemyBehavior)]
         var targets: Set<HexCoord>
         var npcsToHeal: [(position: HexCoord, currentHP: Int, maxHP: Int)]
         var darknessDispelled: Bool
@@ -590,10 +626,10 @@ class ChallengeAI {
 
             for element in challenge.elements {
                 switch element.type {
-                case .enemy(let hp, let damage, _):
-                    enemies.append((element.position, hp, damage))
+                case .enemy(let hp, let damage, let behavior):
+                    enemies.append((element.position, hp, damage, behavior))
                 case .invisibleEnemy(let hp, let damage):
-                    enemies.append((element.position, hp, damage))
+                    enemies.append((element.position, hp, damage, .aggressive))
                 case .target:
                     targets.insert(element.position)
                 case .npc(let needsHealing, _):
@@ -751,9 +787,19 @@ class ChallengeAI {
         var newState = state
 
         for enemy in state.enemies where enemy.hp > 0 {
-            // Simple enemy AI: attack if adjacent
-            if state.playerPosition.distance(to: enemy.position) <= 1 {
-                newState.playerHP -= enemy.damage
+            let distance = state.playerPosition.distance(to: enemy.position)
+            if enemy.behavior == .boss {
+                // Boss: melee bonus at distance 1, area slam at distance ≤ 3
+                if distance == 1 {
+                    newState.playerHP -= enemy.damage + 1
+                } else if distance <= 3 {
+                    newState.playerHP -= enemy.damage
+                }
+            } else {
+                // Regular enemies: attack if adjacent
+                if distance <= 1 {
+                    newState.playerHP -= enemy.damage
+                }
             }
         }
 
@@ -1008,6 +1054,19 @@ class ChallengeAI {
 
         switch type {
         case .combat, .survival:
+            // Boss fallback
+            if Self.isBossChallenge {
+                let bossPos = HexCoord(q: 2, r: 0)
+                elements.append(ChallengeElement(
+                    type: .enemy(hp: Self.bossBaseHP, damage: enemyDamage(strong: true), behavior: .boss),
+                    position: bossPos,
+                    properties: [:]
+                ))
+                required.insert(.damage)
+                description = "A powerful boss blocks your path. Defeat it!"
+                break
+            }
+
             // Combat/Survival - spawn enemies
             // Ranged attack players get ranged OR healer enemies (50/50)
             let maxAttackRange = loadout.spells.filter { $0.isOffensive }.map { $0.range }.max() ?? 1
