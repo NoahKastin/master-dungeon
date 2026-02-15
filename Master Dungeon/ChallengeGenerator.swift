@@ -8,7 +8,9 @@
 //
 
 import Foundation
+#if canImport(GameplayKit)
 import GameplayKit
+#endif
 
 // MARK: - Challenge Types
 
@@ -81,13 +83,14 @@ struct ChallengeScenario {
 
 class ChallengeGenerator {
     static var hexRange: Int { ChallengeAI.hexRange }
-    private let randomSource: GKRandomSource
+    private let randomSource: RandomSourceProtocol
     private var challengeHistory: [ChallengeType] = []
 
     // AI system for guaranteed solvability
     private let challengeAI: ChallengeAI
 
     init(seed: UInt64? = nil) {
+        #if canImport(GameplayKit)
         if let seed = seed {
             randomSource = GKMersenneTwisterRandomSource(seed: seed)
             challengeAI = ChallengeAI(seed: seed)
@@ -95,6 +98,10 @@ class ChallengeGenerator {
             randomSource = GKMersenneTwisterRandomSource()
             challengeAI = ChallengeAI()
         }
+        #else
+        randomSource = SystemRandomSource()
+        challengeAI = ChallengeAI()
+        #endif
     }
 
     /// Generate a challenge dynamically tailored to the player's spell loadout

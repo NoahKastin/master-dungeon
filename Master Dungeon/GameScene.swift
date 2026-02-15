@@ -624,7 +624,8 @@ class GameScene: SKScene {
             return
 
         case .obstacle(_, let destructible):
-            sprite = createObstacleSprite(destructible: destructible)
+            let hp = destructible ? (element.properties["hp"] as? Int ?? 3) : 0
+            sprite = createObstacleSprite(destructible: destructible, hp: hp)
 
         case .hazard(let damage, _):
             sprite = createHazardSprite(damage: damage)
@@ -736,13 +737,28 @@ class GameScene: SKScene {
         return container
     }
 
-    private func createObstacleSprite(destructible: Bool) -> SKNode {
+    private func createObstacleSprite(destructible: Bool, hp: Int = 0) -> SKNode {
+        let container = SKNode()
         let size = hexSize * 0.6
         let obstacle = SKShapeNode(rectOf: CGSize(width: size, height: size), cornerRadius: 4)
         obstacle.fillColor = destructible ? SKColor(red: 0.5, green: 0.3, blue: 0.1, alpha: 1.0) : SKColor(white: 0.4, alpha: 1.0)
         obstacle.strokeColor = SKColor(white: 0.2, alpha: 1.0)
         obstacle.lineWidth = 2
-        return obstacle
+        container.addChild(obstacle)
+
+        if destructible && hp > 0 {
+            let hpLabel = SKLabelNode(fontNamed: "Cochin-Bold")
+            hpLabel.text = "\(hp)"
+            hpLabel.fontSize = hexSize * 0.3
+            hpLabel.fontColor = .white
+            hpLabel.verticalAlignmentMode = .center
+            hpLabel.horizontalAlignmentMode = .center
+            hpLabel.zPosition = 1
+            hpLabel.name = "hpLabel"
+            container.addChild(hpLabel)
+        }
+
+        return container
     }
 
     private func createHazardSprite(damage: Int) -> SKNode {
@@ -1238,6 +1254,11 @@ class GameScene: SKScene {
                         element.type = .obstacle(id: obstId, hp: hp)
                         interactiveElements[id] = element
                         showDamageNumber(damage, at: worldToScreen(position))
+                        // Update HP label on sprite
+                        if let sprite = interactiveSprites[id],
+                           let hpLabel = sprite.childNode(withName: "hpLabel") as? SKLabelNode {
+                            hpLabel.text = "\(hp)"
+                        }
                     }
                     return true
                 }

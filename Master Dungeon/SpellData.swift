@@ -8,6 +8,16 @@
 import Foundation
 
 struct SpellData {
+    /// The Move spell - always available on watchOS as the first spell
+    static let moveSpell = Spell(
+        id: "move", name: "Move",
+        description: "Move to an adjacent hex.",
+        range: 1, offenseDie: 0, defenseDie: 0, manaCost: 0,
+        isQuickCast: true, isPassive: false, noSave: true, isAoE: false,
+        causesParalysis: false, producesLight: false,
+        watchName: "Move"
+    )
+
     /// The Pass spell - always available in normal/hardcore, cannot be deselected
     static let passSpell = Spell(
         id: "pass", name: "Pass",

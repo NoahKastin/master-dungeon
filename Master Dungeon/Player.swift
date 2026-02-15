@@ -5,10 +5,17 @@
 //  Player entity with HP, mana, position, and spell management.
 //
 
+#if canImport(SpriteKit)
 import SpriteKit
+#endif
+#if canImport(GameplayKit)
 import GameplayKit
+typealias PlayerBase = GKEntity
+#else
+class PlayerBase {}
+#endif
 
-class Player: GKEntity {
+class Player: PlayerBase {
     // MARK: - Constants
     static var maxHP: Int {
         switch GameManager.shared.gameMode {
@@ -37,7 +44,9 @@ class Player: GKEntity {
     private var movementSpeed: TimeInterval = 0.2  // Time per hex
 
     // Visual
+    #if canImport(SpriteKit)
     weak var sprite: SKNode?
+    #endif
 
     // Callbacks
     var onPositionChanged: ((HexCoord) -> Void)?
@@ -51,9 +60,11 @@ class Player: GKEntity {
         super.init()
     }
 
+    #if canImport(GameplayKit)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+    #endif
 
     func setLoadout(_ loadout: SpellLoadout) {
         self.loadout = loadout
@@ -157,6 +168,11 @@ class Player: GKEntity {
 
     // MARK: - Movement
 
+    /// Instantly set position (used by watchOS engine)
+    func teleport(to coord: HexCoord) {
+        position = coord
+    }
+
     func moveTo(_ destination: HexCoord, blocked: Set<HexCoord>, completion: @escaping () -> Void) {
         guard !isMoving else { return }
 
@@ -184,10 +200,12 @@ class Player: GKEntity {
 
     // MARK: - Update
 
-    override func update(deltaTime seconds: TimeInterval) {
+    #if canImport(GameplayKit)
+    override nonisolated func update(deltaTime seconds: TimeInterval) {
         super.update(deltaTime: seconds)
         // Mana regeneration disabled - use Pass spell to regain mana
     }
+    #endif
 
     /// Process movement step (called by scene animation system)
     func processMovementStep() -> HexCoord? {

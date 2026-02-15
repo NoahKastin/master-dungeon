@@ -6,7 +6,11 @@
 //  Visible area: 5 hexes in each direction from player (11x11 diamond).
 //
 
+#if canImport(SpriteKit)
 import SpriteKit
+#else
+import CoreGraphics
+#endif
 
 // MARK: - Cube Coordinates
 
@@ -241,6 +245,7 @@ class HexPathfinder {
     }
 }
 
+#if canImport(SpriteKit)
 // MARK: - Hex Sprite
 
 /// Visual representation of a single hex tile
@@ -297,3 +302,4 @@ class HexSprite: SKShapeNode {
         }
     }
 }
+#endif

@@ -12,13 +12,36 @@
 //
 
 import Foundation
+#if canImport(GameplayKit)
 import GameplayKit
+#endif
+
+// MARK: - Cross-Platform Random Source
+
+/// Protocol abstracting GKRandomSource for watchOS compatibility
+protocol RandomSourceProtocol {
+    func nextInt(upperBound: Int) -> Int
+    func nextBool() -> Bool
+}
+
+#if canImport(GameplayKit)
+extension GKRandomSource: RandomSourceProtocol {}
+#else
+/// Fallback random source using Swift's built-in random
+class SystemRandomSource: RandomSourceProtocol {
+    func nextInt(upperBound: Int) -> Int {
+        guard upperBound > 0 else { return 0 }
+        return Int.random(in: 0..<upperBound)
+    }
+    func nextBool() -> Bool { Bool.random() }
+}
+#endif
 
 // MARK: - Challenge AI System
 
 /// AI system that generates and validates challenges using multiple algorithms
 class ChallengeAI {
-    private let randomSource: GKRandomSource
+    private let randomSource: RandomSourceProtocol
 
     // Configuration
     static var hexRange: Int {
@@ -45,11 +68,15 @@ class ChallengeAI {
     }
 
     init(seed: UInt64? = nil) {
+        #if canImport(GameplayKit)
         if let seed = seed {
             randomSource = GKMersenneTwisterRandomSource(seed: seed)
         } else {
             randomSource = GKMersenneTwisterRandomSource()
         }
+        #else
+        randomSource = SystemRandomSource()
+        #endif
     }
 
     // MARK: - Main Entry Point

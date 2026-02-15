@@ -5,10 +5,17 @@
 //  Enemy entities that challenge the player.
 //
 
+#if canImport(SpriteKit)
 import SpriteKit
+#endif
+#if canImport(GameplayKit)
 import GameplayKit
+typealias EnemyBase = GKEntity
+#else
+class EnemyBase {}
+#endif
 
-class Enemy: GKEntity {
+class Enemy: EnemyBase {
     // MARK: - Properties
     let id = UUID()
     private(set) var hp: Int
@@ -18,7 +25,9 @@ class Enemy: GKEntity {
     private(set) var position: HexCoord
 
     // Visual
+    #if canImport(SpriteKit)
     weak var sprite: SKNode?
+    #endif
 
     // Merge State
     private(set) var isMerged: Bool = false
@@ -55,9 +64,11 @@ class Enemy: GKEntity {
         super.init()
     }
 
+    #if canImport(GameplayKit)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+    #endif
 
     // MARK: - Combat
 
