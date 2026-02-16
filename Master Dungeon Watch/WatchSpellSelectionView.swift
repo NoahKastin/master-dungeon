@@ -88,8 +88,13 @@ struct WatchSpellSelectionView: View {
         .sheet(isPresented: $showHelp) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("Spell Guide")
+                    Text("How to Play")
                         .font(.headline)
+                        .padding(.bottom, 4)
+
+                    Text("Lower enemy HP to 0 with offensive spells. Keep your own HP up with healing spells. Long-press a spell to see its stats.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
                         .padding(.bottom, 4)
 
                     ForEach(allSpells) { spell in

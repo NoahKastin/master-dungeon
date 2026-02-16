@@ -414,9 +414,9 @@ class MainMenuScene: SKScene {
 
         // Instructions text
         let instructions = """
-        SELECT SPELLS
-        Choose up to 3 spells. Pass is always
-        available and restores all your mana.
+        Choose up to 3 spells, then survive!
+        Hold a mode button for its description.
+        Long-press a spell to see its stats.
 
         MOVEMENT
         Tap a hex to walk there.
@@ -438,8 +438,6 @@ class MainMenuScene: SKScene {
         CHALLENGES
         Complete objectives shown at the top.
         Each challenge tests different skills.
-
-        Hold a mode button for its description.
 
         Tap anywhere to close
         """

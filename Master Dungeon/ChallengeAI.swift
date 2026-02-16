@@ -225,7 +225,7 @@ class ChallengeAI {
         // CSP: Select elements that satisfy constraints
         switch type {
         case .combat:
-            if Self.isBossChallenge {
+            if Self.isBossChallenge && constraints.canDealDamage {
                 elements = generateBossCombatCSP(constraints: constraints, difficulty: difficulty, usedPositions: &usedPositions)
             } else {
                 elements = generateCombatCSP(constraints: constraints, difficulty: difficulty, usedPositions: &usedPositions)
@@ -1087,8 +1087,8 @@ class ChallengeAI {
 
         switch type {
         case .combat, .survival:
-            // Boss fallback
-            if Self.isBossChallenge {
+            // Boss fallback (only if player can deal damage)
+            if Self.isBossChallenge && loadout.hasCapability(.damage) {
                 let bossPos = HexCoord(q: 2, r: 0)
                 elements.append(ChallengeElement(
                     type: .enemy(hp: Self.bossBaseHP, damage: enemyDamage(strong: true), behavior: .boss),

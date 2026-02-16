@@ -110,8 +110,9 @@ class ChallengeGenerator {
         // Analyze the loadout to understand what the player can do
         let analysis = analyzeLoadout(loadout)
 
-        // Boss intervals force combat; otherwise vary from recent history
-        let challengeType = ChallengeAI.isBossChallenge ? .combat : selectVariedChallengeType(for: analysis)
+        // Boss intervals force combat if player can deal damage; otherwise vary from recent history
+        let hasDamage = analysis.capabilities.contains(.damage)
+        let challengeType = (ChallengeAI.isBossChallenge && hasDamage) ? .combat : selectVariedChallengeType(for: analysis)
         print("CHALLENGE DEBUG: Selected type = \(challengeType), hasDamage = \(analysis.capabilities.contains(.damage))")
 
         // Try AI-generated challenge first (guaranteed solvable)
@@ -512,7 +513,7 @@ class ChallengeGenerator {
 
         switch scenario.type {
         case .combat:
-            if ChallengeAI.isBossChallenge {
+            if ChallengeAI.isBossChallenge && analysis.capabilities.contains(.damage) {
                 elements = generateBossCombatElements(difficulty: difficulty, usedPositions: &usedPositions)
             } else {
                 elements = generateCombatElements(count: elementCount, analysis: analysis, difficulty: difficulty, usedPositions: &usedPositions)
