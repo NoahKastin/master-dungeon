@@ -39,6 +39,7 @@ struct WidgetEntryView: View {
                 Text(state.challengeDescription)
                     .font(.system(size: 11, weight: .semibold, design: .rounded))
                     .foregroundStyle(.yellow)
+                    .widgetAccentable()
                 Spacer()
                 Button(intent: ShowHelpIntent()) {
                     Image(systemName: "questionmark.circle")
@@ -57,6 +58,7 @@ struct WidgetEntryView: View {
                             Image(systemName: sfSymbol(for: spell))
                                 .font(.system(size: 12))
                                 .foregroundStyle(spellColor(for: spell))
+                                .widgetAccentable()
                             Text(spell.watchName)
                                 .font(.system(size: 7, weight: .medium))
                                 .foregroundStyle(.white)
@@ -67,10 +69,12 @@ struct WidgetEntryView: View {
                         .background(
                             RoundedRectangle(cornerRadius: 4)
                                 .fill(isSelected ? Color.yellow.opacity(0.3) : Color.white.opacity(0.08))
+                                .widgetAccentable()
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 4)
                                 .stroke(isSelected ? Color.yellow : Color.clear, lineWidth: 1)
+                                .widgetAccentable()
                         )
                     }
                     .buttonStyle(.plain)
@@ -84,7 +88,7 @@ struct WidgetEntryView: View {
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 4)
-                        .background(RoundedRectangle(cornerRadius: 6).fill(.green.opacity(0.4)))
+                        .background(RoundedRectangle(cornerRadius: 6).fill(.green.opacity(0.4)).widgetAccentable())
                 }
                 .buttonStyle(.plain)
             }
@@ -100,6 +104,7 @@ struct WidgetEntryView: View {
             Text("How to Play")
                 .font(.system(size: 12, weight: .bold, design: .rounded))
                 .foregroundStyle(.yellow)
+                .widgetAccentable()
 
             VStack(alignment: .leading, spacing: 3) {
                 helpLine("1.", "Pick 3 spells, then tap Play")
@@ -115,7 +120,7 @@ struct WidgetEntryView: View {
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 4)
-                    .background(RoundedRectangle(cornerRadius: 6).fill(.blue.opacity(0.4)))
+                    .background(RoundedRectangle(cornerRadius: 6).fill(.blue.opacity(0.4)).widgetAccentable())
             }
             .buttonStyle(.plain)
         }
@@ -145,10 +150,12 @@ struct WidgetEntryView: View {
                     Text("\u{2764}\(state.playerHP)")
                         .font(.system(size: 10, weight: .bold, design: .rounded))
                         .foregroundStyle(.red)
+                        .widgetAccentable()
                     Spacer()
                     Text("\u{2605}\(state.challengeCount)")
                         .font(.system(size: 10, weight: .bold, design: .rounded))
                         .foregroundStyle(.yellow)
+                        .widgetAccentable()
                 }
 
                 // Spell buttons (vertical stack)
@@ -161,6 +168,7 @@ struct WidgetEntryView: View {
                             Image(systemName: sfSymbol(for: spell))
                                 .font(.system(size: 10))
                                 .foregroundStyle(spellColor(for: spell))
+                                .widgetAccentable()
                             Text(spell.watchName)
                                 .font(.system(size: 7, weight: .medium))
                                 .foregroundStyle(.white)
@@ -179,6 +187,7 @@ struct WidgetEntryView: View {
                         .background(
                             RoundedRectangle(cornerRadius: 4)
                                 .fill(isSelected ? Color.yellow.opacity(0.3) : Color.white.opacity(0.08))
+                                .widgetAccentable()
                         )
                     }
                     .buttonStyle(.plain)
@@ -220,9 +229,11 @@ struct WidgetEntryView: View {
                         Image(systemName: sfSymbol(for: spell))
                             .font(.system(size: 16))
                             .foregroundStyle(spellColor(for: spell))
+                            .widgetAccentable()
                         Text(spell.watchName)
                             .font(.system(size: 9, weight: .semibold))
                             .foregroundStyle(.yellow)
+                            .widgetAccentable()
                         Text("Tap a hex")
                             .font(.system(size: 8))
                             .foregroundStyle(.white.opacity(0.6))
@@ -235,10 +246,12 @@ struct WidgetEntryView: View {
                     Text("\u{2764}\(state.playerHP)")
                         .font(.system(size: 10, weight: .bold, design: .rounded))
                         .foregroundStyle(.red)
+                        .widgetAccentable()
                     Spacer()
                     Text("\u{2605}\(state.challengeCount)")
                         .font(.system(size: 10, weight: .bold, design: .rounded))
                         .foregroundStyle(.yellow)
+                        .widgetAccentable()
                 }
 
                 Button(intent: SelectSpellIntent(spellID: "move")) {
@@ -295,6 +308,7 @@ struct WidgetEntryView: View {
                     Image(systemName: sfSymbol(for: spell))
                         .font(.system(size: 18))
                         .foregroundStyle(spellColor(for: spell))
+                        .widgetAccentable()
                     Text(spell.name)
                         .font(.system(size: 13, weight: .bold, design: .rounded))
                         .foregroundStyle(.white)
@@ -316,6 +330,7 @@ struct WidgetEntryView: View {
                         statBadge("STUN", "\u{2713}", .purple)
                     }
                 }
+                .widgetAccentable()
 
                 Text(spell.description)
                     .font(.system(size: 8, weight: .medium))
@@ -343,6 +358,7 @@ struct WidgetEntryView: View {
             Text(value)
                 .font(.system(size: 11, weight: .bold, design: .rounded))
                 .foregroundStyle(color)
+                .widgetAccentable()
             Text(label)
                 .font(.system(size: 6, weight: .medium))
                 .foregroundStyle(.white.opacity(0.5))
@@ -356,6 +372,7 @@ struct WidgetEntryView: View {
             Text("Victory!")
                 .font(.system(size: 16, weight: .bold, design: .rounded))
                 .foregroundStyle(.yellow)
+                .widgetAccentable()
             Text("Score: \(state.challengeCount)")
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                 .foregroundStyle(.white)
@@ -365,7 +382,7 @@ struct WidgetEntryView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 6)
-                    .background(Capsule().fill(.green.opacity(0.4)))
+                    .background(Capsule().fill(.green.opacity(0.4)).widgetAccentable())
             }
             .buttonStyle(.plain)
         }
@@ -376,6 +393,7 @@ struct WidgetEntryView: View {
             Text("Game Over")
                 .font(.system(size: 16, weight: .bold, design: .rounded))
                 .foregroundStyle(.red)
+                .widgetAccentable()
             Text("Score: \(state.challengeCount)")
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                 .foregroundStyle(.white)
@@ -385,7 +403,7 @@ struct WidgetEntryView: View {
                     .foregroundStyle(.white)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 6)
-                    .background(Capsule().fill(.blue.opacity(0.4)))
+                    .background(Capsule().fill(.blue.opacity(0.4)).widgetAccentable())
             }
             .buttonStyle(.plain)
         }
