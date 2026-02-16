@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		AA0002002F26D600004DA19D /* Master Dungeon Watch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = AA0001002F26D600004DA19D /* Master Dungeon Watch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		BB0003002F27A000004DA19D /* Master Dungeon Widget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = BB0003012F27A000004DA19D /* Master Dungeon Widget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -32,6 +33,13 @@
 			remoteGlobalIDString = AA0001052F26D600004DA19D;
 			remoteInfo = "Master Dungeon Watch";
 		};
+		BB0003022F27A000004DA19D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 5A7053E52F26D5D7004DA19D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = BB0003032F27A000004DA19D;
+			remoteInfo = "Master Dungeon Widget";
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -46,6 +54,17 @@
 			name = "Embed Watch Content";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BB0003042F27A000004DA19D /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				BB0003002F27A000004DA19D /* Master Dungeon Widget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
@@ -53,6 +72,7 @@
 		5A7054062F26D5D9004DA19D /* Master DungeonTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Master DungeonTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		5A7054102F26D5D9004DA19D /* Master DungeonUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Master DungeonUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA0001002F26D600004DA19D /* Master Dungeon Watch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Master Dungeon Watch.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB0003012F27A000004DA19D /* Master Dungeon Widget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Master Dungeon Widget.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -70,6 +90,20 @@
 			);
 			target = AA0001052F26D600004DA19D /* Master Dungeon Watch */;
 		};
+		BB0003052F27A000004DA19D /* Exceptions for "Master Dungeon" folder in "Master Dungeon Widget" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				ChallengeAI.swift,
+				ChallengeGenerator.swift,
+				Enemy.swift,
+				GameManager.swift,
+				HexGrid.swift,
+				Player.swift,
+				Spell.swift,
+				SpellData.swift,
+			);
+			target = BB0003032F27A000004DA19D /* Master Dungeon Widget */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -77,6 +111,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				AA0001092F26D600004DA19D /* Exceptions for "Master Dungeon" folder in "Master Dungeon Watch" target */,
+				BB0003052F27A000004DA19D /* Exceptions for "Master Dungeon" folder in "Master Dungeon Widget" target */,
 			);
 			path = "Master Dungeon";
 			sourceTree = "<group>";
@@ -89,6 +124,11 @@
 		AA0001012F26D600004DA19D /* Master Dungeon Watch */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = "Master Dungeon Watch";
+			sourceTree = "<group>";
+		};
+		BB0003062F27A000004DA19D /* Master Dungeon Widget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Master Dungeon Widget";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -122,6 +162,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BB0003072F27A000004DA19D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -130,6 +177,7 @@
 			children = (
 				5A7053EF2F26D5D7004DA19D /* Master Dungeon */,
 				AA0001012F26D600004DA19D /* Master Dungeon Watch */,
+				BB0003062F27A000004DA19D /* Master Dungeon Widget */,
 				5A7054092F26D5D9004DA19D /* Master DungeonTests */,
 				5A7053EE2F26D5D7004DA19D /* Products */,
 			);
@@ -140,6 +188,7 @@
 			children = (
 				5A7053ED2F26D5D7004DA19D /* Master Dungeon.app */,
 				AA0001002F26D600004DA19D /* Master Dungeon Watch.app */,
+				BB0003012F27A000004DA19D /* Master Dungeon Widget.appex */,
 				5A7054062F26D5D9004DA19D /* Master DungeonTests.xctest */,
 				5A7054102F26D5D9004DA19D /* Master DungeonUITests.xctest */,
 			);
@@ -157,11 +206,13 @@
 				5A7053EA2F26D5D7004DA19D /* Frameworks */,
 				5A7053EB2F26D5D7004DA19D /* Resources */,
 				AA0002032F26D600004DA19D /* Embed Watch Content */,
+				BB0003042F27A000004DA19D /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				AA0002022F26D600004DA19D /* PBXTargetDependency */,
+				BB0003082F27A000004DA19D /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				5A7053EF2F26D5D7004DA19D /* Master Dungeon */,
@@ -238,6 +289,28 @@
 			productReference = AA0001002F26D600004DA19D /* Master Dungeon Watch.app */;
 			productType = "com.apple.product-type.application";
 		};
+		BB0003032F27A000004DA19D /* Master Dungeon Widget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BB00030C2F27A000004DA19D /* Build configuration list for PBXNativeTarget "Master Dungeon Widget" */;
+			buildPhases = (
+				BB0003092F27A000004DA19D /* Sources */,
+				BB0003072F27A000004DA19D /* Frameworks */,
+				BB00030A2F27A000004DA19D /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				BB0003062F27A000004DA19D /* Master Dungeon Widget */,
+			);
+			name = "Master Dungeon Widget";
+			packageProductDependencies = (
+			);
+			productName = "Master Dungeon Widget";
+			productReference = BB0003012F27A000004DA19D /* Master Dungeon Widget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -262,6 +335,9 @@
 					AA0001052F26D600004DA19D = {
 						CreatedOnToolsVersion = 26.2;
 					};
+					BB0003032F27A000004DA19D = {
+						CreatedOnToolsVersion = 26.2;
+					};
 				};
 			};
 			buildConfigurationList = 5A7053E82F26D5D7004DA19D /* Build configuration list for PBXProject "Master Dungeon" */;
@@ -280,6 +356,7 @@
 			targets = (
 				5A7053EC2F26D5D7004DA19D /* Master Dungeon */,
 				AA0001052F26D600004DA19D /* Master Dungeon Watch */,
+				BB0003032F27A000004DA19D /* Master Dungeon Widget */,
 				5A7054052F26D5D9004DA19D /* Master DungeonTests */,
 				5A70540F2F26D5D9004DA19D /* Master DungeonUITests */,
 			);
@@ -309,6 +386,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		AA0001042F26D600004DA19D /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BB00030A2F27A000004DA19D /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -346,6 +430,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		BB0003092F27A000004DA19D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -363,6 +454,11 @@
 			isa = PBXTargetDependency;
 			target = AA0001052F26D600004DA19D /* Master Dungeon Watch */;
 			targetProxy = AA0002012F26D600004DA19D /* PBXContainerItemProxy */;
+		};
+		BB0003082F27A000004DA19D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = BB0003032F27A000004DA19D /* Master Dungeon Widget */;
+			targetProxy = BB0003022F27A000004DA19D /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -508,7 +604,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.11.2;
+				MARKETING_VERSION = 0.12;
 				PRODUCT_BUNDLE_IDENTIFIER = "noah.kastin.net.Master-Dungeon";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -542,7 +638,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.11.2;
+				MARKETING_VERSION = 0.12;
 				PRODUCT_BUNDLE_IDENTIFIER = "noah.kastin.net.Master-Dungeon";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -656,7 +752,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.11.2;
+				MARKETING_VERSION = 0.12;
 				PRODUCT_BUNDLE_IDENTIFIER = "noah.kastin.net.Master-Dungeon.watchkitapp";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -687,7 +783,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.11.2;
+				MARKETING_VERSION = 0.12;
 				PRODUCT_BUNDLE_IDENTIFIER = "noah.kastin.net.Master-Dungeon.watchkitapp";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
@@ -699,6 +795,64 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 4;
 				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		BB00030D2F27A000004DA19D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = R7956CSNGK;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WidgetInfo.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Master Dungeon Widget";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.12;
+				PRODUCT_BUNDLE_IDENTIFIER = "noah.kastin.net.Master-Dungeon.widget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		BB00030E2F27A000004DA19D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = R7956CSNGK;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = WidgetInfo.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Master Dungeon Widget";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.12;
+				PRODUCT_BUNDLE_IDENTIFIER = "noah.kastin.net.Master-Dungeon.widget";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -746,6 +900,15 @@
 			buildConfigurations = (
 				AA0001062F26D600004DA19D /* Debug */,
 				AA0001072F26D600004DA19D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		BB00030C2F27A000004DA19D /* Build configuration list for PBXNativeTarget "Master Dungeon Widget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BB00030D2F27A000004DA19D /* Debug */,
+				BB00030E2F27A000004DA19D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
