@@ -19,7 +19,7 @@ class Player: PlayerBase {
     // MARK: - Constants
     static var maxHP: Int {
         switch GameManager.shared.gameMode {
-        case .easy: return 16
+        case .easy, .rainbow: return 16
         case .medium: return 10
         case .hardcore: return 1
         case .normal, .blitz: return 4
@@ -37,6 +37,28 @@ class Player: PlayerBase {
 
     // Active passive spells
     private(set) var activePassives: Set<String> = []
+
+    // Rainbow mode potion inventory
+    var potionInventory: [String: Int] = [:]
+
+    func collectPotion(_ colorRaw: String) {
+        potionInventory[colorRaw, default: 0] += 1
+    }
+
+    @discardableResult
+    func usePotion(_ colorRaw: String) -> Bool {
+        guard let count = potionInventory[colorRaw], count > 0 else { return false }
+        potionInventory[colorRaw] = count - 1
+        return true
+    }
+
+    func potionCount(for colorRaw: String) -> Int {
+        potionInventory[colorRaw, default: 0]
+    }
+
+    var hasPotions: Bool {
+        potionInventory.values.contains { $0 > 0 }
+    }
 
     // Movement
     private(set) var isMoving: Bool = false

@@ -130,21 +130,19 @@ class MainMenuScene: SKScene {
         rainbowButton = SKShapeNode(rectOf: CGSize(width: buttonWidth, height: buttonHeight), cornerRadius: 12)
         rainbowButton.fillColor = .white
         rainbowButton.fillTexture = makeRainbowTexture(width: buttonWidth, height: buttonHeight)
-        rainbowButton.strokeColor = SKColor(red: 0.9, green: 0.3, blue: 0.7, alpha: 1.0)
+        rainbowButton.strokeColor = SKColor(white: 0.4, alpha: 1.0)
         rainbowButton.lineWidth = 2
         rainbowButton.position = CGPoint(x: rightX, y: buttonTopY)
         rainbowButton.zPosition = 10
-        rainbowButton.alpha = 0.4
         addChild(rainbowButton)
 
         let rainbowLabel = SKLabelNode(fontNamed: "Cochin-Bold")
-        rainbowLabel.text = "Rainbow \u{1F512}"
+        rainbowLabel.text = "Rainbow"
         rainbowLabel.fontSize = 18
         rainbowLabel.fontColor = .white
         rainbowLabel.verticalAlignmentMode = .center
         rainbowLabel.position = rainbowButton.position
         rainbowLabel.zPosition = 11
-        rainbowLabel.alpha = 0.4
         addChild(rainbowLabel)
 
         // "Team" button (purple, locked)
@@ -222,7 +220,7 @@ class MainMenuScene: SKScene {
         let halfWidth: CGFloat = 70
         let halfHeight: CGFloat = 25
 
-        let buttons = [easyButton!, mediumButton!, hardButton!, extremeButton!, blitzButton!, howToPlayButton!]
+        let buttons = [easyButton!, mediumButton!, hardButton!, extremeButton!, blitzButton!, rainbowButton!, howToPlayButton!]
         for button in buttons {
             let bounds = CGRect(
                 x: button.position.x - halfWidth,
@@ -262,6 +260,8 @@ class MainMenuScene: SKScene {
                 showModeDescription("One mistake ends it all.")
             } else if button === blitzButton {
                 showModeDescription("Beat the clock!")
+            } else if button === rainbowButton {
+                showModeDescription("Drink potions, outrun lava!")
             }
         } else {
             // Short tap — start mode or show help
@@ -275,6 +275,8 @@ class MainMenuScene: SKScene {
                 startExtremeMode()
             } else if button === blitzButton {
                 startBlitzMode()
+            } else if button === rainbowButton {
+                startRainbowMode()
             } else if button === howToPlayButton {
                 showHelp()
             }
@@ -322,6 +324,14 @@ class MainMenuScene: SKScene {
 
     private func startBlitzMode() {
         GameManager.shared.gameMode = .blitz
+        let spellScene = SpellSelectionScene(size: size)
+        spellScene.scaleMode = scaleMode
+        let transition = SKTransition.fade(withDuration: 0.5)
+        view?.presentScene(spellScene, transition: transition)
+    }
+
+    private func startRainbowMode() {
+        GameManager.shared.gameMode = .rainbow
         let spellScene = SpellSelectionScene(size: size)
         spellScene.scaleMode = scaleMode
         let transition = SKTransition.fade(withDuration: 0.5)

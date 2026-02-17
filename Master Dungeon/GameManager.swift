@@ -13,13 +13,22 @@ enum GameMode {
     case normal
     case hardcore
     case blitz
+    case rainbow
 
     var hasMana: Bool {
         switch self {
-        case .easy, .blitz: return false
+        case .easy, .blitz, .rainbow: return false
         default: return true
         }
     }
+}
+
+// MARK: - Rainbow Mode Tuning
+enum RainbowConfig {
+    static let startHP = 16
+    static let lavaAdvanceInterval = 3   // Lava moves every N player turns
+    static let visibleRange = 4          // Wider view for sidescrolling
+    static let zoneSpacing = 3           // Hexes between zone centers along q-axis
 }
 
 // MARK: - Blitz Timer Tuning

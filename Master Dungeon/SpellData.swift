@@ -474,3 +474,78 @@ struct SpellData {
         allSpells.sorted { $0.manaCost < $1.manaCost }
     }
 }
+
+// MARK: - Rainbow Mode Potions
+
+enum PotionColor: String, CaseIterable {
+    case red, green, blue, gold, purple, mint, rainbow
+
+    var spell: Spell {
+        SpellData.potionSpells[self]!
+    }
+
+    static func random() -> PotionColor {
+        allCases.randomElement()!
+    }
+}
+
+extension SpellData {
+    static let potionSpells: [PotionColor: Spell] = [
+        .red: Spell(
+            id: "potion-red", name: "Red Potion",
+            description: "A fiery potion that damages adjacent foes.",
+            range: 1, offenseDie: 8, defenseDie: 0, manaCost: 0,
+            isQuickCast: true, isPassive: false, noSave: true, isAoE: true,
+            causesParalysis: false, producesLight: false,
+            watchName: "Red"
+        ),
+        .green: Spell(
+            id: "potion-green", name: "Green Potion",
+            description: "A soothing potion that heals you.",
+            range: 1, offenseDie: 0, defenseDie: 8, manaCost: 0,
+            isQuickCast: true, isPassive: false, noSave: true, isAoE: true,
+            causesParalysis: false, producesLight: false,
+            watchName: "Green"
+        ),
+        .blue: Spell(
+            id: "potion-blue", name: "Blue Potion",
+            description: "A chilling potion that stuns adjacent foes.",
+            range: 1, offenseDie: 0, defenseDie: 0, manaCost: 0,
+            isQuickCast: true, isPassive: false, noSave: true, isAoE: true,
+            causesParalysis: true, producesLight: false,
+            watchName: "Blue"
+        ),
+        .gold: Spell(
+            id: "potion-gold", name: "Gold Potion",
+            description: "A balanced potion that damages foes and heals you.",
+            range: 1, offenseDie: 4, defenseDie: 4, manaCost: 0,
+            isQuickCast: true, isPassive: false, noSave: true, isAoE: true,
+            causesParalysis: false, producesLight: false,
+            watchName: "Gold"
+        ),
+        .purple: Spell(
+            id: "potion-purple", name: "Purple Potion",
+            description: "A volatile potion that damages and stuns adjacent foes.",
+            range: 1, offenseDie: 6, defenseDie: 0, manaCost: 0,
+            isQuickCast: true, isPassive: false, noSave: true, isAoE: true,
+            causesParalysis: true, producesLight: false,
+            watchName: "Purple"
+        ),
+        .mint: Spell(
+            id: "potion-mint", name: "Mint Potion",
+            description: "A refreshing potion that heals you and stuns adjacent foes.",
+            range: 1, offenseDie: 0, defenseDie: 6, manaCost: 0,
+            isQuickCast: true, isPassive: false, noSave: true, isAoE: true,
+            causesParalysis: true, producesLight: false,
+            watchName: "Mint"
+        ),
+        .rainbow: Spell(
+            id: "potion-rainbow", name: "Rainbow Potion",
+            description: "A prismatic potion that damages, heals, and stuns.",
+            range: 1, offenseDie: 3, defenseDie: 3, manaCost: 0,
+            isQuickCast: true, isPassive: false, noSave: true, isAoE: true,
+            causesParalysis: true, producesLight: false,
+            watchName: "Rainbow"
+        ),
+    ]
+}

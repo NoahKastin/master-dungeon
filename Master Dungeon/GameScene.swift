@@ -33,6 +33,7 @@ class GameScene: SKScene {
         switch GameManager.shared.gameMode {
         case .easy: return 1
         case .medium: return 2
+        case .rainbow: return RainbowConfig.visibleRange
         default: return 3
         }
     }
@@ -85,6 +86,18 @@ class GameScene: SKScene {
     private var blitzTimerLabel: SKLabelNode?
     private var isBlitz: Bool { GameManager.shared.gameMode == .blitz }
 
+    // MARK: - Rainbow Mode
+    private var isRainbow: Bool { GameManager.shared.gameMode == .rainbow }
+    private var lavaColumn: Int = Int.min
+    private var turnsSinceLavaAdvance: Int = 0
+    private var nextZoneColumn: Int = 0
+    private var droppedPotions: [HexCoord: PotionColor] = [:]
+    private var potionSprites: [HexCoord: SKNode] = [:]
+    private var potionBar: PotionBar?
+    private var selectedPotion: PotionColor?
+    private var zonesCleared: Int = 0
+    private var rainbowZoneHadEnemies: Bool = false
+
     // MARK: - State
     private var selectedSpell: Spell?
     private var highlightedHexes: [HexCoord] = []
@@ -109,7 +122,12 @@ class GameScene: SKScene {
         setupScene()
         setupPlayer()
         setupUI()
-        generateNewChallenge()
+
+        if isRainbow {
+            setupRainbow()
+        } else {
+            generateNewChallenge()
+        }
     }
 
     // MARK: - Setup
@@ -263,16 +281,26 @@ class GameScene: SKScene {
             manaBar = mana
         }
 
-        // Spell bar (bottom center) - only create if we have spells
-        let spells = player.loadout.spells
-        if !spells.isEmpty {
-            let bar = SpellBar(spells: spells, slotSize: 60)
+        // Bottom bar — PotionBar in rainbow, SpellBar otherwise
+        if isRainbow {
+            let bar = PotionBar()
             bar.position = CGPoint(x: size.width / 2, y: safeBottom + 50)
-            bar.onSpellSelected = { [weak self] spell in
-                self?.selectSpell(spell)
+            bar.onPotionSelected = { [weak self] color in
+                self?.selectPotion(color)
             }
             uiLayer.addChild(bar)
-            spellBar = bar
+            potionBar = bar
+        } else {
+            let spells = player.loadout.spells
+            if !spells.isEmpty {
+                let bar = SpellBar(spells: spells, slotSize: 60)
+                bar.position = CGPoint(x: size.width / 2, y: safeBottom + 50)
+                bar.onSpellSelected = { [weak self] spell in
+                    self?.selectSpell(spell)
+                }
+                uiLayer.addChild(bar)
+                spellBar = bar
+            }
         }
 
         // Objective label (top center, below safe area) - supports multi-line wrapping
@@ -347,11 +375,23 @@ class GameScene: SKScene {
             sprite.position = hexLayout.hexToScreen(localCoord)
         }
 
-        // Update hex visuals based on blocked state
+        // Update hex visuals based on blocked/lava state
         for (localCoord, sprite) in hexSprites {
             let worldCoord = localCoord + player.position
             sprite.isBlocked = blockedHexes.contains(worldCoord)
+            if isRainbow {
+                sprite.isLava = worldCoord.q <= lavaColumn
+                sprite.lavaColumnIndex = worldCoord.q
+            }
             sprite.updateAppearance()
+        }
+
+        // Update potion sprite positions relative to player
+        if isRainbow {
+            for (worldPos, sprite) in potionSprites {
+                let localCoord = worldPos - player.position
+                sprite.position = hexLayout.hexToScreen(localCoord)
+            }
         }
     }
 
@@ -492,6 +532,189 @@ class GameScene: SKScene {
         }
 
         updateGridPosition()
+    }
+
+    // MARK: - Rainbow Mode
+
+    private func setupRainbow() {
+        lavaColumn = player.position.q - GameScene.visibleRange - 2
+        nextZoneColumn = player.position.q + RainbowConfig.zoneSpacing
+        zonesCleared = 0
+        turnsSinceLavaAdvance = 0
+        objectiveLabel?.text = "Outrun the lava!"
+        scoreLabel?.text = "Zones: 0"
+        updateGridPosition()
+    }
+
+    private func rainbowAfterPlayerAction() {
+        guard isRainbow else { return }
+
+        turnsSinceLavaAdvance += 1
+        if turnsSinceLavaAdvance >= RainbowConfig.lavaAdvanceInterval {
+            advanceLava()
+            turnsSinceLavaAdvance = 0
+        }
+
+        // Check if player entered lava
+        if player.position.q <= lavaColumn {
+            showGameOver()
+            return
+        }
+
+        // Check potion collection
+        if let color = droppedPotions[player.position] {
+            player.collectPotion(color.rawValue)
+            droppedPotions.removeValue(forKey: player.position)
+            potionSprites[player.position]?.removeFromParent()
+            potionSprites.removeValue(forKey: player.position)
+            potionBar?.updateCounts(from: player)
+            showStatusText("+1 \(color.rawValue.capitalized)", at: CGPoint(x: size.width / 2, y: size.height / 2), color: .green)
+        }
+
+        // Check zone completion — enemies are removed from activeEnemies on death,
+        // so we use rainbowZoneHadEnemies to detect the transition from "had enemies" to "all cleared"
+        if rainbowZoneHadEnemies && activeEnemies.isEmpty {
+            rainbowZoneHadEnemies = false
+            zonesCleared += 1
+            scoreLabel?.text = "Zones: \(zonesCleared)"
+            let dropPos = player.position  // Drop near player
+            let color = PotionColor.random()
+            droppedPotions[dropPos] = color
+            renderPotionDrop(at: dropPos, color: color)
+            potionBar?.updateCounts(from: player)
+            showStatusText("Zone cleared!", at: CGPoint(x: size.width / 2, y: size.height / 2 + 30), color: .yellow)
+            objectiveLabel?.text = "Collect the potion!"
+        }
+
+        // Generate new zone if approaching
+        if player.position.q >= nextZoneColumn - 1 && activeEnemies.isEmpty {
+            generateRainbowZone()
+        }
+
+        updateGridPosition()
+    }
+
+    private func advanceLava() {
+        lavaColumn += 1
+
+        // Kill enemies caught in lava
+        for enemy in activeEnemies where enemy.isAlive {
+            if enemy.position.q <= lavaColumn {
+                enemy.takeDamage(enemy.hp)  // Kill instantly
+                enemySprites[enemy.id]?.removeFromParent()
+                enemySprites.removeValue(forKey: enemy.id)
+                let screenPos = worldToScreen(enemy.position)
+                showStatusText("Consumed!", at: screenPos, color: .orange)
+            }
+        }
+        activeEnemies.removeAll { !$0.isAlive }
+
+        // Destroy potions in lava
+        for (pos, _) in droppedPotions where pos.q <= lavaColumn {
+            potionSprites[pos]?.removeFromParent()
+            potionSprites.removeValue(forKey: pos)
+            droppedPotions.removeValue(forKey: pos)
+        }
+
+        // Check if player is caught
+        if player.position.q <= lavaColumn {
+            showGameOver()
+            return
+        }
+
+        showStatusText("Lava advances!", at: CGPoint(x: size.width / 2, y: size.height / 2 - 30), color: .red)
+        updateGridPosition()
+    }
+
+    private func generateRainbowZone() {
+        // Clear old enemies
+        for enemy in activeEnemies {
+            enemySprites[enemy.id]?.removeFromParent()
+        }
+        activeEnemies.removeAll()
+        enemySprites.removeAll()
+        blockedHexes.removeAll()
+
+        // Generate 1-2 enemies near the zone center
+        let zoneCenter = HexCoord(q: nextZoneColumn, r: 0)
+        let enemyCount = zonesCleared < 3 ? 1 : Int.random(in: 1...2)
+        let neighbors = zoneCenter.neighbors()
+
+        for i in 0..<enemyCount {
+            let pos = i < neighbors.count ? neighbors[i] : zoneCenter
+            let hp = max(1, 1 + zonesCleared / 2)
+            let enemy = Enemy(hp: hp, damage: 1, behavior: .aggressive, position: pos)
+            spawnEnemy(enemy)
+        }
+
+        nextZoneColumn += RainbowConfig.zoneSpacing
+        rainbowZoneHadEnemies = true
+        objectiveLabel?.text = "Defeat the enemies!"
+        updateGridPosition()
+    }
+
+    private func selectPotion(_ color: PotionColor?) {
+        // Clear existing highlights
+        clearHighlights()
+        selectedSpell = nil
+        selectedPotion = nil
+
+        guard let color = color else { return }
+
+        // Must have this potion in inventory
+        guard player.potionCount(for: color.rawValue) > 0 else { return }
+
+        // Potions are instant self-cast AoE — apply immediately at player position
+        let spell = color.spell
+        player.usePotion(color.rawValue)
+        potionBar?.updateCounts(from: player)
+
+        // Build the right effect for applySpellEffect
+        let effect: SpellEffect
+        if spell.isOffensive {
+            effect = .damage(spell.rollOffense())
+        } else if spell.isDefensive {
+            effect = .healing(spell.rollDefense())
+        } else {
+            effect = .none
+        }
+        applySpellEffect(spell: spell, at: player.position, effect: effect)
+        showSpellEffect(spell: spell, at: player.position, effect: effect)
+
+        potionBar?.deselectAll()
+
+        // Trigger enemy turns after using a potion
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+            self?.processEnemyTurns()
+        }
+    }
+
+    private func renderPotionDrop(at worldPos: HexCoord, color: PotionColor) {
+        let localCoord = worldPos - player.position
+        let screenPos = hexLayout.hexToScreen(localCoord)
+        let radius = hexSize * 0.25
+
+        let container: SKNode
+        if color == .rainbow {
+            container = PotionSlotNode.makeRainbowCircle(radius: radius)
+        } else {
+            let circle = SKShapeNode(circleOfRadius: radius)
+            circle.fillColor = PotionSlotNode.potionSKColor(for: color)
+            circle.strokeColor = .white
+            circle.lineWidth = 1
+            container = circle
+        }
+        container.zPosition = 3
+        container.position = screenPos
+        entityLayer.addChild(container)
+        potionSprites[worldPos] = container
+
+        // Pulse animation
+        let pulse = SKAction.repeatForever(SKAction.sequence([
+            SKAction.scale(to: 1.2, duration: 0.5),
+            SKAction.scale(to: 1.0, duration: 0.5)
+        ]))
+        container.run(pulse)
     }
 
     private func createInteractiveElement(from element: ChallengeElement, at position: HexCoord) -> InteractiveElement? {
@@ -866,9 +1089,13 @@ class GameScene: SKScene {
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
 
-        // If game over, any tap returns to spell selection
+        // If game over, any tap returns to spell selection (or menu for rainbow)
         if isGameOver {
-            returnToSpellSelection()
+            if isRainbow {
+                returnToMainMenu()
+            } else {
+                returnToSpellSelection()
+            }
             return
         }
 
@@ -879,12 +1106,23 @@ class GameScene: SKScene {
             let backLocation = touch.location(in: back)
             let backBounds = CGRect(x: -40, y: -20, width: 80, height: 40)
             if backBounds.contains(backLocation) {
-                returnToSpellSelection()
+                if isRainbow {
+                    returnToMainMenu()
+                } else {
+                    returnToSpellSelection()
+                }
                 return
             }
         }
 
-        // Check if touch is on UI (spell bar) — defer to touchesEnded for tap vs long-press
+        // Check if touch is on UI (potion bar in rainbow, spell bar otherwise)
+        if let bar = potionBar {
+            let barLocation = touch.location(in: bar)
+            if bar.contains(barLocation) {
+                bar.handleTouch(at: barLocation)
+                return
+            }
+        }
         if let bar = spellBar {
             let barLocation = touch.location(in: bar)
             if bar.contains(barLocation) {
@@ -945,6 +1183,13 @@ class GameScene: SKScene {
         spellBarTouchPoint = nil
     }
 
+    private func returnToMainMenu() {
+        let menuScene = MainMenuScene(size: size)
+        menuScene.scaleMode = scaleMode
+        let transition = SKTransition.fade(withDuration: 0.5)
+        view?.presentScene(menuScene, transition: transition)
+    }
+
     private func returnToSpellSelection() {
         GameManager.shared.challengesCompleted = 0
         let spellScene = SpellSelectionScene(size: size)
@@ -954,9 +1199,14 @@ class GameScene: SKScene {
     }
 
     private func handleHexTap(_ coord: HexCoord) {
+        // Rainbow mode: block movement/casting into lava
+        if isRainbow && coord.q <= lavaColumn {
+            return
+        }
+
         if let spell = selectedSpell {
-            // Easy mode: AoE spells cannot target the player's own hex
-            if GameManager.shared.gameMode == .easy && spell.isAoE && coord == player.position {
+            // Easy/Rainbow mode: AoE spells cannot target the player's own hex
+            if (GameManager.shared.gameMode == .easy || isRainbow) && spell.isAoE && coord == player.position {
                 return
             }
 
@@ -973,6 +1223,7 @@ class GameScene: SKScene {
                 if !spell.isPassive {
                     selectSpell(nil)
                     spellBar?.deselectAll()
+                    selectedPotion = nil
                 }
 
             case .failure(let error):
@@ -1052,6 +1303,12 @@ class GameScene: SKScene {
                 showHealingNumber(healing, at: playerScreenPos)
                 let screenPos = worldToScreen(coord)
                 showSpellFlash(color: .green, at: screenPos)
+            } else if spell.isOffensive && isRainbow {
+                // Rainbow mode dual potions (gold, rainbow): always heal even if no enemies hit
+                let healing = spell.rollDefense()
+                player.heal(healing)
+                let playerScreenPos = CGPoint(x: size.width / 2, y: size.height / 2)
+                showHealingNumber(healing, at: playerScreenPos)
             } else if !spell.isOffensive {
                 // Pure healing spell - check for NPCs at target location first
                 if let healAmount = healNPCAt(coord, amount: spell.rollDefense()) {
@@ -1062,6 +1319,8 @@ class GameScene: SKScene {
                     // No NPC - heal player
                     if case .healing(let amount) = effect {
                         player.heal(amount)
+                        let playerScreenPos = CGPoint(x: size.width / 2, y: size.height / 2)
+                        showHealingNumber(amount, at: playerScreenPos)
                     }
                 }
             }
@@ -1594,6 +1853,8 @@ class GameScene: SKScene {
     private var challengeHadEnemies: Bool = false  // Track if enemies were spawned for this challenge
 
     private func checkChallengeCompletion() {
+        // Rainbow mode handles zone completion in rainbowAfterPlayerAction
+        guard !isRainbow else { return }
         guard let challenge = currentChallenge, !challengeCompleted else { return }
 
         var isComplete = false
@@ -1858,6 +2119,9 @@ class GameScene: SKScene {
         }
 
         checkAndMergeEnemies()
+
+        // Rainbow mode: advance lava, check zone completion, etc.
+        rainbowAfterPlayerAction()
     }
 
     private func checkAndMergeEnemies() {
@@ -1945,11 +2209,21 @@ class GameScene: SKScene {
         gameOverLabel.zPosition = 201
         addChild(gameOverLabel)
 
+        if isRainbow {
+            let scoreDisplay = SKLabelNode(fontNamed: "Cochin-Bold")
+            scoreDisplay.text = "Zones Cleared: \(zonesCleared)"
+            scoreDisplay.fontSize = 22
+            scoreDisplay.fontColor = .yellow
+            scoreDisplay.position = CGPoint(x: size.width / 2, y: size.height / 2)
+            scoreDisplay.zPosition = 201
+            addChild(scoreDisplay)
+        }
+
         let restartLabel = SKLabelNode(fontNamed: "Cochin")
-        restartLabel.text = "Tap to return to spell selection"
+        restartLabel.text = isRainbow ? "Tap to return to menu" : "Tap to return to spell selection"
         restartLabel.fontSize = 18
         restartLabel.fontColor = .white
-        restartLabel.position = CGPoint(x: size.width / 2, y: size.height / 2 - 20)
+        restartLabel.position = CGPoint(x: size.width / 2, y: size.height / 2 - (isRainbow ? 40 : 20))
         restartLabel.zPosition = 201
         addChild(restartLabel)
     }

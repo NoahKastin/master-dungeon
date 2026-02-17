@@ -252,6 +252,7 @@ class HexPathfinder {
 class HexSprite: SKShapeNode {
     let localCoord: HexCoord  // Position relative to player (player is always at 0,0)
     var isBlocked: Bool = false
+    var isLava: Bool = false
     var isHighlighted: Bool = false {
         didSet { updateAppearance() }
     }
@@ -295,11 +296,31 @@ class HexSprite: SKShapeNode {
     func updateAppearance() {
         if isHighlighted {
             fillColor = highlightColor
+        } else if isLava {
+            fillColor = lavaColor
+            strokeColor = lavaColor.withAlphaComponent(0.8)
         } else if isBlocked {
             fillColor = SKColor(white: 0.05, alpha: 0.9)
+            strokeColor = SKColor(white: 0.3, alpha: 1.0)
         } else {
             fillColor = SKColor(white: 0.1, alpha: 0.8)
+            strokeColor = SKColor(white: 0.3, alpha: 1.0)
         }
+    }
+
+    /// Lava color cycles through the 7 potion colors based on world column
+    var lavaColumnIndex: Int = 0
+    private var lavaColor: SKColor {
+        let colors: [SKColor] = [
+            SKColor(red: 1.0, green: 0.4, blue: 0.3, alpha: 0.9),  // Red
+            SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 0.9), // Gold
+            SKColor(red: 0.3, green: 1.0, blue: 0.4, alpha: 0.9),  // Green
+            SKColor(red: 0.2, green: 0.95, blue: 0.8, alpha: 0.9), // Mint
+            SKColor(red: 0.4, green: 0.7, blue: 1.0, alpha: 0.9),  // Blue
+            SKColor(red: 0.7, green: 0.3, blue: 0.9, alpha: 0.9),  // Purple
+        ]
+        let index = ((lavaColumnIndex % colors.count) + colors.count) % colors.count
+        return colors[index]
     }
 }
 #endif

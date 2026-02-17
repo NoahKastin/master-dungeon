@@ -740,3 +740,189 @@ class SpellSlot: SKNode {
         alpha = enabled ? 1.0 : 0.4
     }
 }
+
+// MARK: - Potion Bar (Rainbow Mode)
+
+class PotionBar: SKNode {
+    private let slotSize: CGFloat = 45
+    private let slotSpacing: CGFloat = 6
+    private var slots: [PotionColor: PotionSlotNode] = [:]
+    private var selectedColor: PotionColor?
+
+    var onPotionSelected: ((PotionColor?) -> Void)?
+
+    override init() {
+        super.init()
+        createSlots()
+    }
+
+    required init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    private func createSlots() {
+        let colors = PotionColor.allCases
+        let totalWidth = CGFloat(colors.count) * slotSize + CGFloat(colors.count - 1) * slotSpacing
+        let startX = -totalWidth / 2 + slotSize / 2
+
+        for (index, color) in colors.enumerated() {
+            let slot = PotionSlotNode(color: color, size: slotSize)
+            slot.position = CGPoint(x: startX + CGFloat(index) * (slotSize + slotSpacing), y: 0)
+            addChild(slot)
+            slots[color] = slot
+        }
+    }
+
+    func updateCounts(from player: Player) {
+        for color in PotionColor.allCases {
+            let count = player.potionCount(for: color.rawValue)
+            slots[color]?.updateCount(count)
+        }
+    }
+
+    func handleTouch(at point: CGPoint) {
+        for (color, slot) in slots {
+            let slotFrame = CGRect(
+                x: slot.position.x - slotSize / 2,
+                y: slot.position.y - slotSize / 2,
+                width: slotSize,
+                height: slotSize
+            )
+            if slotFrame.contains(point) {
+                if selectedColor == color {
+                    deselectAll()
+                    onPotionSelected?(nil)
+                } else {
+                    guard slot.currentCount > 0 else { return }
+                    deselectAll()
+                    selectedColor = color
+                    slot.setSelected(true)
+                    onPotionSelected?(color)
+                }
+                return
+            }
+        }
+    }
+
+    func deselectAll() {
+        selectedColor = nil
+        for (_, slot) in slots {
+            slot.setSelected(false)
+        }
+    }
+
+    override func contains(_ point: CGPoint) -> Bool {
+        let colors = PotionColor.allCases
+        let totalWidth = CGFloat(colors.count) * slotSize + CGFloat(max(0, colors.count - 1)) * slotSpacing
+        let frame = CGRect(x: -totalWidth / 2, y: -slotSize / 2, width: totalWidth, height: slotSize)
+        return frame.contains(point)
+    }
+}
+
+class PotionSlotNode: SKNode {
+    private let background: SKShapeNode
+    private let countLabel: SKLabelNode
+    private let selectionBorder: SKShapeNode
+    private(set) var currentCount: Int = 0
+
+    init(color: PotionColor, size: CGFloat) {
+        background = SKShapeNode(circleOfRadius: size / 2)
+        background.fillColor = PotionSlotNode.potionSKColor(for: color)
+        background.strokeColor = SKColor(white: 0.3, alpha: 1.0)
+        background.lineWidth = 2
+
+        countLabel = SKLabelNode(fontNamed: "Cochin-Bold")
+        countLabel.fontSize = 14
+        countLabel.fontColor = .white
+        countLabel.verticalAlignmentMode = .center
+        countLabel.horizontalAlignmentMode = .center
+        countLabel.text = "0"
+
+        selectionBorder = SKShapeNode(circleOfRadius: size / 2 + 3)
+        selectionBorder.fillColor = .clear
+        selectionBorder.strokeColor = SKColor(red: 1.0, green: 0.8, blue: 0.2, alpha: 1.0)
+        selectionBorder.lineWidth = 3
+        selectionBorder.isHidden = true
+
+        super.init()
+
+        addChild(selectionBorder)
+        if color == .rainbow {
+            // Multicolored pie segments instead of solid fill
+            background.fillColor = .clear
+            let rainbow = PotionSlotNode.makeRainbowCircle(radius: size / 2)
+            addChild(rainbow)
+            addChild(countLabel)
+        } else {
+            addChild(background)
+            addChild(countLabel)
+        }
+
+        alpha = 0.3  // Start grayed out
+    }
+
+    required init?(coder aDecoder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func updateCount(_ count: Int) {
+        currentCount = count
+        countLabel.text = "\(count)"
+        alpha = count > 0 ? 1.0 : 0.3
+    }
+
+    func setSelected(_ selected: Bool) {
+        selectionBorder.isHidden = !selected
+        if selected {
+            let pulse = SKAction.sequence([
+                SKAction.scale(to: 1.1, duration: 0.1),
+                SKAction.scale(to: 1.0, duration: 0.1)
+            ])
+            run(pulse)
+        }
+    }
+
+    static func potionSKColor(for color: PotionColor) -> SKColor {
+        switch color {
+        case .red:     return SKColor(red: 1.0, green: 0.4, blue: 0.3, alpha: 1.0)
+        case .green:   return SKColor(red: 0.3, green: 1.0, blue: 0.4, alpha: 1.0)
+        case .blue:    return SKColor(red: 0.4, green: 0.7, blue: 1.0, alpha: 1.0)
+        case .gold:    return SKColor(red: 1.0, green: 0.85, blue: 0.3, alpha: 1.0)
+        case .purple:  return SKColor(red: 0.7, green: 0.3, blue: 0.9, alpha: 1.0)
+        case .mint:    return SKColor(red: 0.2, green: 0.95, blue: 0.8, alpha: 1.0)
+        case .rainbow: return .white
+        }
+    }
+
+    /// All potion colors for rainbow cycling
+    static let rainbowSegmentColors: [SKColor] = [
+        potionSKColor(for: .red),
+        potionSKColor(for: .gold),
+        potionSKColor(for: .green),
+        potionSKColor(for: .mint),
+        potionSKColor(for: .blue),
+        potionSKColor(for: .purple),
+    ]
+
+    /// Creates a multicolored circle node with pie segments
+    static func makeRainbowCircle(radius: CGFloat) -> SKNode {
+        let container = SKNode()
+        let colors = rainbowSegmentColors
+        let segmentAngle = CGFloat.pi * 2.0 / CGFloat(colors.count)
+
+        for (i, color) in colors.enumerated() {
+            let startAngle = segmentAngle * CGFloat(i) - CGFloat.pi / 2
+            let endAngle = startAngle + segmentAngle
+            let path = CGMutablePath()
+            path.move(to: .zero)
+            path.addArc(center: .zero, radius: radius, startAngle: startAngle, endAngle: endAngle, clockwise: false)
+            path.closeSubpath()
+            let segment = SKShapeNode(path: path)
+            segment.fillColor = color
+            segment.strokeColor = .clear
+            segment.lineWidth = 0
+            container.addChild(segment)
+        }
+        return container
+    }
+}

@@ -40,6 +40,20 @@ class SpellSelectionScene: SKScene {
     // MARK: - Scene Lifecycle
 
     override func didMove(to view: SKView) {
+        // Rainbow mode skips spell selection — potions are the spells
+        if GameManager.shared.gameMode == .rainbow {
+            var rainbowLoadout = SpellLoadout()
+            _ = rainbowLoadout.addSpell(SpellData.moveSpell)
+            GameManager.shared.currentLoadout = rainbowLoadout
+            GameManager.shared.challengesCompleted = 0
+
+            let gameScene = GameScene(size: size)
+            gameScene.scaleMode = scaleMode
+            let transition = SKTransition.fade(withDuration: 0.5)
+            self.view?.presentScene(gameScene, transition: transition)
+            return
+        }
+
         backgroundColor = SKColor(white: 0.08, alpha: 1.0)
 
         // Calculate layout based on screen size
