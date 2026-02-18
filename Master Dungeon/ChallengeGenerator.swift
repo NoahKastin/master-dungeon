@@ -111,9 +111,7 @@ class ChallengeGenerator {
         // Analyze the loadout to understand what the player can do
         let analysis = analyzeLoadout(loadout)
 
-        // Boss intervals force combat if player can deal damage; otherwise vary from recent history
-        let hasDamage = analysis.capabilities.contains(.damage)
-        let challengeType = (ChallengeAI.isBossChallenge && hasDamage) ? .combat : selectVariedChallengeType(for: analysis)
+        let challengeType = selectVariedChallengeType(for: analysis)
         print("CHALLENGE DEBUG: Selected type = \(challengeType), hasDamage = \(analysis.capabilities.contains(.damage))")
 
         // Try AI-generated challenge first (guaranteed solvable)
@@ -514,11 +512,7 @@ class ChallengeGenerator {
 
         switch scenario.type {
         case .combat:
-            if ChallengeAI.isBossChallenge && analysis.capabilities.contains(.damage) {
-                elements = generateBossCombatElements(difficulty: difficulty, usedPositions: &usedPositions)
-            } else {
-                elements = generateCombatElements(count: elementCount, analysis: analysis, difficulty: difficulty, usedPositions: &usedPositions)
-            }
+            elements = generateCombatElements(count: elementCount, analysis: analysis, difficulty: difficulty, usedPositions: &usedPositions)
         case .obstacle:
             elements = generateObstacleElements(count: elementCount, analysis: analysis, usedPositions: &usedPositions)
         case .puzzle:
@@ -571,28 +565,11 @@ class ChallengeGenerator {
         return randomSource.nextInt(upperBound: 3) < 2 ? 1 : 2
     }
 
-    private func generateBossCombatElements(difficulty: Int, usedPositions: inout Set<HexCoord>) -> [ChallengeElement] {
-        var elements: [ChallengeElement] = []
-
-        let bossHP = ChallengeAI.bossBaseHP + difficulty
-        let bossDamage = enemyDamage(strong: true)
-        let bossPos = randomPosition(minDistance: 2, maxDistance: min(3, Self.hexRange), avoiding: usedPositions)
-        usedPositions.insert(bossPos)
-
-        elements.append(ChallengeElement(
-            type: .enemy(hp: bossHP, damage: bossDamage, behavior: .boss),
-            position: bossPos,
-            properties: [:]
-        ))
-
-        return elements
-    }
-
     private func generateCombatElements(count: Int, analysis: LoadoutAnalysis, difficulty: Int, usedPositions: inout Set<HexCoord>) -> [ChallengeElement] {
         var elements: [ChallengeElement] = []
 
-        // High difficulty: add a summoner that spawns minions mid-combat (requires hexRange >= 3)
-        if Self.hexRange >= 3 && randomSource.nextBool() {
+        // High difficulty: add a summoner that spawns minions mid-combat (requires hexRange >= 3; not in Blitz)
+        if Self.hexRange >= 3 && GameManager.shared.gameMode != .blitz && randomSource.nextBool() {
             let pos = randomPosition(minDistance: 2, maxDistance: Self.hexRange - 1, avoiding: usedPositions)
             usedPositions.insert(pos)
             elements.append(ChallengeElement(
@@ -805,8 +782,8 @@ class ChallengeGenerator {
     private func generateSurvivalElements(count: Int, analysis: LoadoutAnalysis, difficulty: Int, usedPositions: inout Set<HexCoord>) -> [ChallengeElement] {
         var elements: [ChallengeElement] = []
 
-        // 50% chance to add a summoner (requires hexRange >= 3 to fit at minDist 2)
-        if Self.hexRange >= 3 && randomSource.nextBool() {
+        // 50% chance to add a summoner (requires hexRange >= 3; not in Blitz)
+        if Self.hexRange >= 3 && GameManager.shared.gameMode != .blitz && randomSource.nextBool() {
             let pos = randomPosition(minDistance: 2, maxDistance: Self.hexRange - 1, avoiding: usedPositions)
             usedPositions.insert(pos)
             elements.append(ChallengeElement(

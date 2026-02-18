@@ -51,9 +51,7 @@ class ChallengeAI {
         default: return 3
         }
     }
-    static let bossInterval = 5
-    static let bossBaseHP = 6
-    // Boss damage uses enemyDamage(strong: true) for mode-aware scaling
+    static let bossInterval = 5  // Still used for difficulty scaling in GameScene
     private let maxSimulationSteps = 50
     private let simulationRuns = 10
     private let maxGenerationAttempts = 20
@@ -95,12 +93,6 @@ class ChallengeAI {
 
                 // Step 3: Verify solvability with Monte Carlo simulation
                 let (solvable, confidence) = verifySolvability(challenge: candidate, loadout: loadout)
-
-                // Boss challenges accept a lower solvability bar — they're meant to be hard
-                let isBoss = Self.isBossChallenge
-                if isBoss && confidence >= 0.3 {
-                    return candidate
-                }
 
                 if solvable && confidence >= 0.7 {
                     // Step 4: Score the challenge quality
@@ -210,12 +202,6 @@ class ChallengeAI {
         )
     }
 
-    /// Whether the current challenge should be a boss encounter
-    static var isBossChallenge: Bool {
-        let completed = GameManager.shared.challengesCompleted
-        return completed > 0 && completed % bossInterval == 0
-    }
-
     /// Generate challenge using Constraint Satisfaction
     /// CSP ensures all elements satisfy the constraint model
     private func generateWithCSP(type: ChallengeType, constraints: ConstraintModel, difficulty: Int, attempt: Int) -> Challenge? {
@@ -225,11 +211,7 @@ class ChallengeAI {
         // CSP: Select elements that satisfy constraints
         switch type {
         case .combat:
-            if Self.isBossChallenge && constraints.canDealDamage {
-                elements = generateBossCombatCSP(constraints: constraints, difficulty: difficulty, usedPositions: &usedPositions)
-            } else {
-                elements = generateCombatCSP(constraints: constraints, difficulty: difficulty, usedPositions: &usedPositions)
-            }
+            elements = generateCombatCSP(constraints: constraints, difficulty: difficulty, usedPositions: &usedPositions)
 
         case .obstacle:
             // Constraint: Player must be able to destroy obstacles
@@ -286,8 +268,8 @@ class ChallengeAI {
     private func generateCombatCSP(constraints: ConstraintModel, difficulty: Int, usedPositions: inout Set<HexCoord>) -> [ChallengeElement] {
         var elements: [ChallengeElement] = []
 
-        // Summoner: 50% chance to add one (requires hexRange >= 3 to fit at minDist 2)
-        if ChallengeAI.hexRange >= 3 && randomSource.nextInt(upperBound: 2) == 0 {
+        // Summoner: 50% chance to add one (requires hexRange >= 3; not in Blitz)
+        if ChallengeAI.hexRange >= 3 && GameManager.shared.gameMode != .blitz && randomSource.nextInt(upperBound: 2) == 0 {
             let pos = randomValidPosition(minDist: 2, maxDist: ChallengeAI.hexRange - 1, avoiding: usedPositions)
             usedPositions.insert(pos)
             elements.append(ChallengeElement(
@@ -391,23 +373,6 @@ class ChallengeAI {
         return elements
     }
 
-    private func generateBossCombatCSP(constraints: ConstraintModel, difficulty: Int, usedPositions: inout Set<HexCoord>) -> [ChallengeElement] {
-        var elements: [ChallengeElement] = []
-
-        let bossHP = Self.bossBaseHP + difficulty
-        let bossDamage = enemyDamage(strong: true)
-        let bossPos = randomValidPosition(minDist: 2, maxDist: min(3, ChallengeAI.hexRange), avoiding: usedPositions)
-        usedPositions.insert(bossPos)
-
-        elements.append(ChallengeElement(
-            type: .enemy(hp: bossHP, damage: bossDamage, behavior: .boss),
-            position: bossPos,
-            properties: [:]
-        ))
-
-        return elements
-    }
-
     private func generateObstacleCSP(constraints: ConstraintModel, usedPositions: inout Set<HexCoord>) -> [ChallengeElement] {
         var elements: [ChallengeElement] = []
 
@@ -480,8 +445,8 @@ class ChallengeAI {
     private func generateSurvivalCSP(constraints: ConstraintModel, difficulty: Int, usedPositions: inout Set<HexCoord>) -> [ChallengeElement] {
         var elements: [ChallengeElement] = []
 
-        // 50% chance to add a summoner (requires hexRange >= 3 to fit at minDist 2)
-        if ChallengeAI.hexRange >= 3 && randomSource.nextInt(upperBound: 2) == 0 {
+        // 50% chance to add a summoner (requires hexRange >= 3; not in Blitz)
+        if ChallengeAI.hexRange >= 3 && GameManager.shared.gameMode != .blitz && randomSource.nextInt(upperBound: 2) == 0 {
             let pos = randomValidPosition(minDist: 2, maxDist: ChallengeAI.hexRange - 1, avoiding: usedPositions)
             usedPositions.insert(pos)
             elements.append(ChallengeElement(
@@ -842,18 +807,8 @@ class ChallengeAI {
 
         for enemy in state.enemies where enemy.hp > 0 {
             let distance = state.playerPosition.distance(to: enemy.position)
-            if enemy.behavior == .boss {
-                // Boss: melee bonus at distance 1, area slam at distance ≤ 3
-                if distance == 1 {
-                    newState.playerHP -= enemy.damage + 1
-                } else if distance <= 3 {
-                    newState.playerHP -= enemy.damage
-                }
-            } else {
-                // Regular enemies: attack if adjacent
-                if distance <= 1 {
-                    newState.playerHP -= enemy.damage
-                }
+            if distance <= 1 {
+                newState.playerHP -= enemy.damage
             }
         }
 
@@ -1108,19 +1063,6 @@ class ChallengeAI {
 
         switch type {
         case .combat, .survival:
-            // Boss fallback (only if player can deal damage)
-            if Self.isBossChallenge && loadout.hasCapability(.damage) {
-                let bossPos = HexCoord(q: 2, r: 0)
-                elements.append(ChallengeElement(
-                    type: .enemy(hp: Self.bossBaseHP, damage: enemyDamage(strong: true), behavior: .boss),
-                    position: bossPos,
-                    properties: [:]
-                ))
-                required.insert(.damage)
-                description = "A powerful boss blocks your path. Defeat it!"
-                break
-            }
-
             // Combat/Survival - spawn enemies
             // Ranged attack players get ranged OR healer enemies (50/50)
             let maxAttackRange = loadout.spells.filter { $0.isOffensive }.map { $0.range }.max() ?? 1
