@@ -36,6 +36,7 @@ class Enemy: EnemyBase {
     // AI State
     private(set) var isStunned: Bool = false
     private var stunTurnsRemaining: Int = 0
+    private var turnsSinceLastSummon: Int = 0
 
     // Callbacks
     var onPositionChanged: ((HexCoord) -> Void)?
@@ -126,6 +127,9 @@ class Enemy: EnemyBase {
 
         case .boss:
             return bossBehavior(playerPosition: playerPosition, distance: distanceToPlayer, blocked: blocked)
+
+        case .summoner:
+            return summonerBehavior(playerPosition: playerPosition, distance: distanceToPlayer, blocked: blocked)
         }
     }
 
@@ -239,6 +243,34 @@ class Enemy: EnemyBase {
         return .healAlly(amount: damage, range: healRange)
     }
 
+    private func summonerBehavior(playerPosition: HexCoord, distance: Int, blocked: Set<HexCoord>) -> EnemyAction {
+        turnsSinceLastSummon += 1
+
+        // Cornered — weak attack
+        if distance == 1 {
+            return .attack(target: playerPosition, damage: damage)
+        }
+
+        // Summon every 2 turns on an adjacent empty hex
+        if turnsSinceLastSummon >= 2 {
+            let candidates = position.neighbors().filter { !blocked.contains($0) && $0 != playerPosition }
+            if let summonPos = candidates.randomElement() {
+                turnsSinceLastSummon = 0
+                return .specialAttack(type: .summon, center: summonPos, radius: 0, damage: 1)
+            }
+        }
+
+        // Retreat if player too close
+        if distance < 2 {
+            if let newPos = findRetreatDirection(from: playerPosition, blocked: blocked) {
+                moveTo(newPos)
+                return .move(to: newPos)
+            }
+        }
+
+        return .wait
+    }
+
     private func bossBehavior(playerPosition: HexCoord, distance: Int, blocked: Set<HexCoord>) -> EnemyAction {
         // Boss has special attack patterns
         if distance == 1 {
@@ -290,10 +322,11 @@ class Enemy: EnemyBase {
 
     static func behaviorPriority(_ behavior: EnemyBehavior) -> Int {
         switch behavior {
-        case .boss: return 6
-        case .aggressive: return 5
-        case .ranged: return 4
-        case .healer: return 3
+        case .boss: return 7
+        case .aggressive: return 6
+        case .ranged: return 5
+        case .healer: return 4
+        case .summoner: return 3
         case .swarm: return 2
         case .defensive: return 1
         }

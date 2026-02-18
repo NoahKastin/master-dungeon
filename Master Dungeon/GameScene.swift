@@ -883,8 +883,8 @@ class GameScene: SKScene {
     private func createEnemySprite(hp: Int, behavior: EnemyBehavior, isStealth: Bool = false) -> SKNode {
         let container = SKNode()
 
-        // Enemy body - red triangle
-        let size = hexSize * 0.35
+        // Enemy body - red triangle (summoner is larger)
+        let size = (behavior == .summoner) ? hexSize * 0.42 : hexSize * 0.35
         let path = CGMutablePath()
         path.move(to: CGPoint(x: 0, y: size))
         path.addLine(to: CGPoint(x: -size * 0.866, y: -size * 0.5))
@@ -908,6 +908,9 @@ class GameScene: SKScene {
             case .healer:
                 fillColor = SKColor(red: 0.2, green: 0.8, blue: 0.3, alpha: 1.0)  // Green for healer
                 strokeColor = SKColor(red: 0.1, green: 0.5, blue: 0.2, alpha: 1.0)
+            case .summoner:
+                fillColor = SKColor(red: 0.9, green: 0.5, blue: 0.1, alpha: 1.0)  // Orange for summoner
+                strokeColor = SKColor(red: 0.6, green: 0.3, blue: 0.05, alpha: 1.0)
             default:
                 fillColor = SKColor(red: 0.9, green: 0.2, blue: 0.2, alpha: 1.0)
                 strokeColor = SKColor(red: 0.5, green: 0.1, blue: 0.1, alpha: 1.0)
@@ -2094,6 +2097,21 @@ class GameScene: SKScene {
                         let screenPos = CGPoint(x: size.width / 2, y: size.height / 2)
                         showDamageNumber(damage, at: screenPos)
                     }
+                } else if type == .summon {
+                    let minion = Enemy(hp: 1, damage: damage, behavior: .aggressive, position: center)
+                    spawnEnemy(minion)
+                    // "Summoned!" floats above the summoner
+                    if let sprite = enemySprites[enemy.id] {
+                        let worldPos = CGPoint(x: sprite.position.x + entityLayer.position.x,
+                                               y: sprite.position.y + entityLayer.position.y)
+                        showStatusText("Summoned!", at: worldPos, color: .orange)
+                    }
+                    // Orange flash at the minion spawn hex
+                    let minionLocal = center - player.position
+                    let minionScreen = hexLayout.hexToScreen(minionLocal)
+                    let minionWorld = CGPoint(x: minionScreen.x + entityLayer.position.x,
+                                             y: minionScreen.y + entityLayer.position.y)
+                    showSpellFlash(color: .orange, at: minionWorld)
                 }
 
             case .healAlly(let amount, let range):

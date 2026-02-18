@@ -64,6 +64,7 @@ enum EnemyBehavior {
     case healer        // Stays back, heals other enemies
     case swarm         // Multiple weak enemies, AoE effective
     case boss          // High HP, multiple attacks
+    case summoner      // Hangs back, spawns aggressive minions every 2 turns
 }
 
 // MARK: - Challenge Scenarios
@@ -590,6 +591,17 @@ class ChallengeGenerator {
     private func generateCombatElements(count: Int, analysis: LoadoutAnalysis, difficulty: Int, usedPositions: inout Set<HexCoord>) -> [ChallengeElement] {
         var elements: [ChallengeElement] = []
 
+        // High difficulty: add a summoner that spawns minions mid-combat (requires hexRange >= 3)
+        if Self.hexRange >= 3 && randomSource.nextBool() {
+            let pos = randomPosition(minDistance: 2, maxDistance: Self.hexRange - 1, avoiding: usedPositions)
+            usedPositions.insert(pos)
+            elements.append(ChallengeElement(
+                type: .enemy(hp: 3, damage: 1, behavior: .summoner),
+                position: pos,
+                properties: [:]
+            ))
+        }
+
         // Ranged attack players get ranged OR healer enemies (50/50)
         if analysis.hasRangedAttack {
             if randomSource.nextBool() {
@@ -792,6 +804,16 @@ class ChallengeGenerator {
 
     private func generateSurvivalElements(count: Int, analysis: LoadoutAnalysis, difficulty: Int, usedPositions: inout Set<HexCoord>) -> [ChallengeElement] {
         var elements: [ChallengeElement] = []
+
+        // 50% chance to add a summoner (requires hexRange >= 3 to fit at minDist 2)
+        if Self.hexRange >= 3 && randomSource.nextBool() {
+            let pos = randomPosition(minDistance: 2, maxDistance: Self.hexRange - 1, avoiding: usedPositions)
+            usedPositions.insert(pos)
+            elements.append(ChallengeElement(
+                type: .enemy(hp: 3, damage: 1, behavior: .summoner),
+                position: pos, properties: [:]
+            ))
+        }
 
         // Add hazard if player has healing
         if analysis.hasHealing {

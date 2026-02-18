@@ -656,6 +656,7 @@ struct WidgetGameEngine {
         case .healer: return "healer"
         case .swarm: return "swarm"
         case .boss: return "boss"
+        case .summoner: return "summoner"
         }
     }
 

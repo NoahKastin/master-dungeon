@@ -286,6 +286,17 @@ class ChallengeAI {
     private func generateCombatCSP(constraints: ConstraintModel, difficulty: Int, usedPositions: inout Set<HexCoord>) -> [ChallengeElement] {
         var elements: [ChallengeElement] = []
 
+        // Summoner: 50% chance to add one (requires hexRange >= 3 to fit at minDist 2)
+        if ChallengeAI.hexRange >= 3 && randomSource.nextInt(upperBound: 2) == 0 {
+            let pos = randomValidPosition(minDist: 2, maxDist: ChallengeAI.hexRange - 1, avoiding: usedPositions)
+            usedPositions.insert(pos)
+            elements.append(ChallengeElement(
+                type: .enemy(hp: 3, damage: 1, behavior: .summoner),
+                position: pos,
+                properties: [:]
+            ))
+        }
+
         // CSP Constraint: Enemy HP must be killable with available damage
         let maxHP = min(constraints.maxEnemyHP, 2 + difficulty * 2)
 
@@ -468,6 +479,16 @@ class ChallengeAI {
 
     private func generateSurvivalCSP(constraints: ConstraintModel, difficulty: Int, usedPositions: inout Set<HexCoord>) -> [ChallengeElement] {
         var elements: [ChallengeElement] = []
+
+        // 50% chance to add a summoner (requires hexRange >= 3 to fit at minDist 2)
+        if ChallengeAI.hexRange >= 3 && randomSource.nextInt(upperBound: 2) == 0 {
+            let pos = randomValidPosition(minDist: 2, maxDist: ChallengeAI.hexRange - 1, avoiding: usedPositions)
+            usedPositions.insert(pos)
+            elements.append(ChallengeElement(
+                type: .enemy(hp: 3, damage: 1, behavior: .summoner),
+                position: pos, properties: [:]
+            ))
+        }
 
         // CSP: Hazard damage must be healable
         if constraints.canHeal {
