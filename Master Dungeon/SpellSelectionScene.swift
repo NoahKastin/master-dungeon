@@ -513,11 +513,17 @@ class SpellCard: SKNode {
         if spell.isAoE {
             statsText += " | AoE"
         }
+        if spell.causesParalysis {
+            statsText += " | Stun"
+        }
+        if spell.producesLight {
+            statsText += " | Light"
+        }
         statsLabel.text = statsText
 
         // Mana cost at bottom - green for restorers, red for spenders
         costLabel = SKLabelNode(fontNamed: "Cochin-Bold")
-        costLabel.text = spell.manaCost < 0 ? "+\(abs(spell.manaCost))" : "\(spell.manaCost)"
+        costLabel.text = spell.manaCost < 0 ? "+\(abs(spell.manaCost))" : spell.manaCost > 0 ? "-\(spell.manaCost)" : "0"
         costLabel.fontSize = 16 * scale
         if spell.manaCost < 0 {
             costLabel.fontColor = SKColor(red: 0.3, green: 0.8, blue: 0.3, alpha: 1.0)  // Green for restorers

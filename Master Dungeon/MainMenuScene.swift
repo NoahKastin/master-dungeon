@@ -426,7 +426,7 @@ class MainMenuScene: SKScene {
         let instructions = """
         Choose up to 3 spells, then survive!
         Hold a mode button for its description.
-        Long-press a spell to see its stats.
+        Hold a spell to see its stats.
 
         MOVEMENT
         Tap a hex to walk there.

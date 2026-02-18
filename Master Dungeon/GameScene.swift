@@ -1719,8 +1719,14 @@ class GameScene: SKScene {
         if spell.isAoE {
             statsText += "  AoE"
         }
+        if spell.causesParalysis {
+            statsText += "  Stun"
+        }
+        if spell.producesLight {
+            statsText += "  Light"
+        }
         let showMana = !isBlitz
-        let manaText = spell.manaCost < 0 ? "Mana: +\(abs(spell.manaCost))" : "Mana: \(spell.manaCost)"
+        let manaText = spell.manaCost < 0 ? "Mana: +\(abs(spell.manaCost))" : spell.manaCost > 0 ? "Mana: -\(spell.manaCost)" : "Mana: 0"
 
         // Measure text to size the card
         let padding: CGFloat = 12

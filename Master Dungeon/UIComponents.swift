@@ -676,7 +676,7 @@ class SpellSlot: SKNode {
             costLabel.text = "+\(abs(spell.manaCost))"
         } else if spell.manaCost > 0 {
             costLabel.fontColor = SKColor(red: 0.9, green: 0.3, blue: 0.3, alpha: 1.0)  // Red for spenders
-            costLabel.text = "\(spell.manaCost)"
+            costLabel.text = "-\(spell.manaCost)"
         } else {
             costLabel.fontColor = SKColor(white: 0.7, alpha: 1.0)  // Gray for free spells
             costLabel.text = "0"

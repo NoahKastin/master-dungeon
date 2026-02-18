@@ -54,28 +54,7 @@ struct WidgetEntryView: View {
                 ForEach(spells) { spell in
                     let isSelected = state.selectedSpellIDs.contains(spell.id)
                     Button(intent: PickSpellIntent(spellID: spell.id)) {
-                        VStack(spacing: 1) {
-                            Image(systemName: sfSymbol(for: spell))
-                                .font(.system(size: 12))
-                                .foregroundStyle(spellColor(for: spell))
-                                .widgetAccentable()
-                            Text(spell.watchName)
-                                .font(.system(size: 7, weight: .medium))
-                                .foregroundStyle(.white)
-                                .lineLimit(1)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 4)
-                        .background(
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(isSelected ? Color.yellow.opacity(0.3) : Color.white.opacity(0.08))
-                                .widgetAccentable()
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(isSelected ? Color.yellow : Color.clear, lineWidth: 1)
-                                .widgetAccentable()
-                        )
+                        spellPickerCard(spell, isSelected: isSelected)
                     }
                     .buttonStyle(.plain)
                 }
@@ -410,6 +389,37 @@ struct WidgetEntryView: View {
     }
 
     // MARK: - Spell Display Helpers
+
+    private func spellPickerCard(_ spell: Spell, isSelected: Bool) -> some View {
+        HStack(spacing: 4) {
+            Image(systemName: sfSymbol(for: spell))
+                .font(.system(size: 14))
+                .foregroundStyle(spellColor(for: spell))
+                .widgetAccentable()
+                .frame(maxHeight: .infinity)
+                .frame(width: 18)
+            Text(spell.name)
+                .font(.system(size: 7, weight: .medium))
+                .foregroundStyle(.white)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 4)
+        .padding(.horizontal, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 4)
+                .fill(isSelected ? Color.yellow.opacity(0.3) : Color.white.opacity(0.08))
+                .widgetAccentable()
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 4)
+                .stroke(isSelected ? Color.yellow : Color.clear, lineWidth: 1)
+                .widgetAccentable()
+        )
+    }
+
 
     private func sfSymbol(for spell: Spell) -> String {
         switch spell.id {
