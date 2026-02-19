@@ -33,6 +33,9 @@ class Enemy: EnemyBase {
     private(set) var isMerged: Bool = false
     private(set) var mergeCount: Int = 1
 
+    // Combat flags
+    var isInvulnerable: Bool = false
+
     // AI State
     private(set) var isStunned: Bool = false
     private var stunTurnsRemaining: Int = 0
@@ -74,6 +77,7 @@ class Enemy: EnemyBase {
     // MARK: - Combat
 
     func takeDamage(_ amount: Int) {
+        guard !isInvulnerable else { return }
         hp = max(0, hp - amount)
         onHPChanged?(hp)
 

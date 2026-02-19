@@ -437,11 +437,11 @@ final class WatchGameEngine {
             }
 
             // Clamp element positions to within distance 1 (visible 7-hex grid)
+            // Also relocate if position is already occupied by another element
             var usedPositions: Set<HexCoord> = [.zero]
             for element in challenge.elements {
                 var relativePos = element.position
-                if relativePos.distance(to: .zero) > 1 {
-                    // Relocate to nearest available neighbor hex
+                if relativePos.distance(to: .zero) > 1 || usedPositions.contains(relativePos) {
                     let neighbors = HexCoord.zero.neighbors().filter { !usedPositions.contains($0) }
                     if let nearest = neighbors.first {
                         relativePos = nearest
@@ -579,7 +579,7 @@ final class WatchGameEngine {
         for (_, element) in interactiveElements {
             if case .target = element.type {
                 targetCount += 1
-                if player.position.distance(to: element.position) > 1 {
+                if player.position != element.position {
                     return false
                 }
             }

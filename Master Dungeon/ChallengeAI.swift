@@ -229,8 +229,8 @@ class ChallengeAI {
             elements = generateSurvivalCSP(constraints: constraints, difficulty: difficulty, usedPositions: &usedPositions)
 
         case .stealth:
-            // Constraint: Player must have crowd control to sneak past
-            guard constraints.canCrowdControl else { return nil }
+            // Constraint: Player must have crowd control and sufficient hex range (3+ for guard placement)
+            guard constraints.canCrowdControl && ChallengeAI.hexRange >= 3 else { return nil }
             elements = generateStealthCSP(constraints: constraints, usedPositions: &usedPositions)
 
         case .rescue:
@@ -325,7 +325,7 @@ class ChallengeAI {
         }
 
         for _ in 0..<enemyCount {
-            let pos = randomValidPosition(minDist: 2, maxDist: maxDistance, avoiding: usedPositions)
+            let pos = randomValidPosition(minDist: min(2, ChallengeAI.hexRange), maxDist: maxDistance, avoiding: usedPositions)
             usedPositions.insert(pos)
 
             let hp = constraints.canAoE ? 1 : maxHP  // Swarm enemies have 1 HP
@@ -340,7 +340,7 @@ class ChallengeAI {
 
         // Add invisible enemy only if player can detect
         if constraints.canDetectHidden && randomSource.nextBool() {
-            let pos = randomValidPosition(minDist: 2, maxDist: maxDistance, avoiding: usedPositions)
+            let pos = randomValidPosition(minDist: min(2, ChallengeAI.hexRange), maxDist: maxDistance, avoiding: usedPositions)
             usedPositions.insert(pos)
             elements.append(ChallengeElement(
                 type: .invisibleEnemy(hp: 2, damage: enemyDamage()),
@@ -376,8 +376,8 @@ class ChallengeAI {
     private func generateObstacleCSP(constraints: ConstraintModel, usedPositions: inout Set<HexCoord>) -> [ChallengeElement] {
         var elements: [ChallengeElement] = []
 
-        // Place target at r=2 (within 3-hex visible radius)
-        let targetPos = HexCoord(q: 0, r: 2)
+        // Place target within visible radius
+        let targetPos = HexCoord(q: 0, r: min(2, ChallengeAI.hexRange))
         usedPositions.insert(targetPos)
         elements.append(ChallengeElement(
             type: .target(required: true),
@@ -470,7 +470,7 @@ class ChallengeAI {
         let hpPerEnemy = max(1, totalAllowedHP / enemyCount)
 
         for _ in 0..<enemyCount {
-            let pos = randomValidPosition(minDist: 2, maxDist: ChallengeAI.hexRange, avoiding: usedPositions)
+            let pos = randomValidPosition(minDist: min(2, ChallengeAI.hexRange), maxDist: ChallengeAI.hexRange, avoiding: usedPositions)
             usedPositions.insert(pos)
             elements.append(ChallengeElement(
                 type: .enemy(hp: hpPerEnemy, damage: enemyDamage(strong: true), behavior: .aggressive),
@@ -486,11 +486,12 @@ class ChallengeAI {
         var elements: [ChallengeElement] = []
 
         // CSP: Enemies must be avoidable or CC-able
-        // Place enemies with gaps between them (within 3-hex visible range)
+        // Place enemies with gaps between them (within visible range)
+        let r = min(2, ChallengeAI.hexRange)
         let positions = [
-            HexCoord(q: 0, r: 2),
-            HexCoord(q: 1, r: 1),
-            HexCoord(q: -1, r: 2)
+            HexCoord(q: 0, r: r),
+            HexCoord(q: 1, r: max(0, r - 1)),
+            HexCoord(q: -1, r: r)
         ]
 
         for pos in positions {
@@ -502,8 +503,8 @@ class ChallengeAI {
             ))
         }
 
-        // Target must be reachable through gaps or with mobility (within 3-hex range)
-        let targetPos = HexCoord(q: 0, r: 3)
+        // Target must be reachable through gaps or with mobility
+        let targetPos = HexCoord(q: 0, r: ChallengeAI.hexRange)
         usedPositions.insert(targetPos)
         elements.append(ChallengeElement(
             type: .target(required: true),
@@ -517,7 +518,7 @@ class ChallengeAI {
     private func generateRescueCSP(constraints: ConstraintModel, usedPositions: inout Set<HexCoord>) -> [ChallengeElement] {
         var elements: [ChallengeElement] = []
 
-        let npcPos = randomValidPosition(minDist: 2, maxDist: ChallengeAI.hexRange, avoiding: usedPositions)
+        let npcPos = randomValidPosition(minDist: min(2, ChallengeAI.hexRange), maxDist: ChallengeAI.hexRange, avoiding: usedPositions)
         usedPositions.insert(npcPos)
 
         // CSP: NPC type based on player abilities
@@ -540,7 +541,7 @@ class ChallengeAI {
 
         // Enemy - must be defeatable
         if constraints.canDealDamage {
-            let enemyPos = randomValidPosition(minDist: 2, maxDist: ChallengeAI.hexRange, avoiding: usedPositions)
+            let enemyPos = randomValidPosition(minDist: min(2, ChallengeAI.hexRange), maxDist: ChallengeAI.hexRange, avoiding: usedPositions)
             usedPositions.insert(enemyPos)
             elements.append(ChallengeElement(
                 type: .enemy(hp: min(constraints.maxEnemyHP, 3), damage: enemyDamage(), behavior: .aggressive),
@@ -1072,22 +1073,23 @@ class ChallengeAI {
                 let pronoun = isMale ? "him" : "her"
                 let subject = isMale ? "he" : "she"
 
+                let clampedRange = min(maxAttackRange, ChallengeAI.hexRange)
                 if Bool.random() {
                     elements.append(ChallengeElement(
                         type: .enemy(hp: 1, damage: enemyDamage(), behavior: .ranged),
-                        position: HexCoord(q: maxAttackRange, r: 0),
+                        position: HexCoord(q: clampedRange, r: 0),
                         properties: [:]
                     ))
                     description = "A distant archer takes aim! Shoot \(pronoun) before \(subject) shoots you!"
                 } else {
                     elements.append(ChallengeElement(
                         type: .enemy(hp: 3, damage: enemyDamage(strong: true), behavior: .aggressive),
-                        position: HexCoord(q: 2, r: 0),
+                        position: HexCoord(q: min(2, ChallengeAI.hexRange), r: 0),
                         properties: [:]
                     ))
                     elements.append(ChallengeElement(
                         type: .enemy(hp: 2, damage: enemyDamage(), behavior: .healer),
-                        position: HexCoord(q: maxAttackRange, r: 0),
+                        position: HexCoord(q: 0, r: clampedRange),
                         properties: [:]
                     ))
                     description = "A healer supports an ally! Shoot \(pronoun) from range!"
@@ -1095,12 +1097,12 @@ class ChallengeAI {
             } else {
                 elements.append(ChallengeElement(
                     type: .enemy(hp: 2, damage: enemyDamage(strong: true), behavior: .aggressive),
-                    position: HexCoord(q: 2, r: 0),
+                    position: HexCoord(q: min(2, ChallengeAI.hexRange), r: 0),
                     properties: [:]
                 ))
                 elements.append(ChallengeElement(
                     type: .enemy(hp: 1, damage: enemyDamage(), behavior: .defensive),
-                    position: HexCoord(q: 2, r: 1),
+                    position: HexCoord(q: 0, r: min(2, ChallengeAI.hexRange)),
                     properties: [:]
                 ))
                 description = type == .combat ? "Hostile creatures block your path. Defeat them!" : "Survive the onslaught!"
@@ -1109,20 +1111,18 @@ class ChallengeAI {
 
         case .stealth, .timed:
             // Stealth/Timed - need a target to reach
-            // Place target at distance 2 (not 3) so player has room to navigate
+            let stealthTargetDist = min(2, ChallengeAI.hexRange)
             elements.append(ChallengeElement(
                 type: .target(required: true),
-                position: HexCoord(q: 0, r: 2),
+                position: HexCoord(q: 0, r: stealthTargetDist),
                 properties: [:]
             ))
             if type == .stealth {
-                // Add enemy OFF TO THE SIDE (not blocking direct path)
-                // Enemy at (3, 0) - player can walk straight to (0, 2) safely
-                // Detection range is 2, so enemy threatens side paths but not direct route
+                // Guard uses healer behavior: stays at spawn, only weakly attacks if player walks up
                 elements.append(ChallengeElement(
-                    type: .enemy(hp: 5, damage: 2, behavior: .defensive),
-                    position: HexCoord(q: 3, r: 0),
-                    properties: ["patrol": true]
+                    type: .enemy(hp: 5, damage: 1, behavior: .healer),
+                    position: HexCoord(q: min(3, ChallengeAI.hexRange), r: 0),
+                    properties: [:]
                 ))
                 description = "Sneak past the guardian to reach the goal!"
             } else {

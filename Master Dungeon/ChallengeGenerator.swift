@@ -210,8 +210,8 @@ class ChallengeGenerator {
             }
         }
 
-        // Obstacle - need damage (skip in hardcore)
-        if GameManager.shared.gameMode != .hardcore {
+        // Obstacle - need damage (skip in hardcore and Easy where grid is too small)
+        if GameManager.shared.gameMode != .hardcore && ChallengeAI.hexRange >= 2 {
             if hasDamage {
                 weights[.obstacle, default: 0] += 3  // Can destroy obstacles
             }
@@ -227,7 +227,7 @@ class ChallengeGenerator {
             weights[.rescue, default: 0] += 3
         }
 
-        // Stealth - benefits from crowd control (excluded in Blitz)
+        // Stealth - excluded only in Blitz; guard uses healer behavior so it stays put in all modes
         if GameManager.shared.gameMode != .blitz {
             if analysis.hasCrowdControl {
                 weights[.stealth, default: 0] += 3
@@ -614,7 +614,7 @@ class ChallengeGenerator {
         if analysis.hasAoE {
             // Swarm: multiple weak enemies
             for _ in 0..<count {
-                let pos = randomPosition(minDistance: 2, maxDistance: Self.hexRange, avoiding: usedPositions)
+                let pos = randomPosition(minDistance: min(2, Self.hexRange), maxDistance: Self.hexRange, avoiding: usedPositions)
                 usedPositions.insert(pos)
                 elements.append(ChallengeElement(
                     type: .enemy(hp: 1, damage: enemyDamage(), behavior: .swarm),
@@ -634,7 +634,7 @@ class ChallengeGenerator {
             ))
         } else {
             // Aggressive enemy for melee
-            let pos = randomPosition(minDistance: 2, maxDistance: Self.hexRange, avoiding: usedPositions)
+            let pos = randomPosition(minDistance: min(2, Self.hexRange), maxDistance: Self.hexRange, avoiding: usedPositions)
             usedPositions.insert(pos)
             elements.append(ChallengeElement(
                 type: .enemy(hp: 2 + difficulty, damage: enemyDamage(strong: true), behavior: .aggressive),
@@ -645,7 +645,7 @@ class ChallengeGenerator {
 
         // Add invisible enemy if player can detect
         if analysis.hasInformation && randomSource.nextBool() {
-            let pos = randomPosition(minDistance: 2, maxDistance: Self.hexRange, avoiding: usedPositions)
+            let pos = randomPosition(minDistance: min(2, Self.hexRange), maxDistance: Self.hexRange, avoiding: usedPositions)
             usedPositions.insert(pos)
             elements.append(ChallengeElement(
                 type: .invisibleEnemy(hp: 2, damage: enemyDamage()),
@@ -689,9 +689,8 @@ class ChallengeGenerator {
         print("OBSTACLE DEBUG: hasDamage=\(hasDamage), fullyBlock=\(fullyBlock)")
 
         if fullyBlock {
-            // Create a complete wall at r=1 to block access to target at r=2
-            // At r=1, we can cover q=-2 to q=2 (all within 3-hex visible range)
-            let targetPos = HexCoord(q: 0, r: 2)
+            // Create a complete wall at r=1 to block access to target beyond
+            let targetPos = HexCoord(q: 0, r: min(2, Self.hexRange))
             usedPositions.insert(targetPos)
             elements.append(ChallengeElement(
                 type: .target(required: true),
@@ -720,7 +719,7 @@ class ChallengeGenerator {
         } else {
             // Partial obstacles with gaps - standard obstacle course
             for i in -1...1 {
-                let pos = HexCoord(q: i, r: 2)
+                let pos = HexCoord(q: i, r: min(2, Self.hexRange))
                 usedPositions.insert(pos)
 
                 if hasDamage && randomSource.nextBool() {
@@ -804,7 +803,7 @@ class ChallengeGenerator {
 
         // Multiple enemies
         for _ in 0..<count {
-            let pos = randomPosition(minDistance: 2, maxDistance: Self.hexRange, avoiding: usedPositions)
+            let pos = randomPosition(minDistance: min(2, Self.hexRange), maxDistance: Self.hexRange, avoiding: usedPositions)
             usedPositions.insert(pos)
             elements.append(ChallengeElement(
                 type: .enemy(hp: 2 + difficulty, damage: enemyDamage(strong: true), behavior: .aggressive),
@@ -819,9 +818,9 @@ class ChallengeGenerator {
     private func generateStealthElements(count: Int, analysis: LoadoutAnalysis, usedPositions: inout Set<HexCoord>) -> [ChallengeElement] {
         var elements: [ChallengeElement] = []
 
-        // Powerful patrolling enemies
-        for i in 0..<min(3, count) {
-            let pos = HexCoord(q: i * 2, r: 1)
+        // Powerful patrolling enemies — placed randomly within visible range
+        for _ in 0..<min(3, count) {
+            let pos = randomPosition(minDistance: 1, maxDistance: Self.hexRange, avoiding: usedPositions)
             usedPositions.insert(pos)
             elements.append(ChallengeElement(
                 type: .enemy(hp: 10, damage: enemyDamage(strong: true), behavior: .defensive),
@@ -846,7 +845,7 @@ class ChallengeGenerator {
         var elements: [ChallengeElement] = []
 
         // NPC to rescue
-        let npcPos = randomPosition(minDistance: 2, maxDistance: Self.hexRange, avoiding: usedPositions)
+        let npcPos = randomPosition(minDistance: min(2, Self.hexRange), maxDistance: Self.hexRange, avoiding: usedPositions)
         usedPositions.insert(npcPos)
 
         if analysis.hasHealing {
@@ -864,7 +863,7 @@ class ChallengeGenerator {
         }
 
         // Enemy threatening NPC
-        let enemyPos = randomPosition(minDistance: 2, maxDistance: Self.hexRange, avoiding: usedPositions)
+        let enemyPos = randomPosition(minDistance: min(2, Self.hexRange), maxDistance: Self.hexRange, avoiding: usedPositions)
         usedPositions.insert(enemyPos)
         elements.append(ChallengeElement(
             type: .enemy(hp: 2, damage: enemyDamage(), behavior: .aggressive),

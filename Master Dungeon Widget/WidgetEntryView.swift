@@ -142,39 +142,42 @@ struct WidgetEntryView: View {
                     let spell = WidgetGameEngine.resolveSpell(spellID)
                     let isSelected = state.selectedSpellID == spellID
 
-                    Button(intent: SelectSpellIntent(spellID: spellID)) {
-                        HStack(spacing: 3) {
-                            Image(systemName: sfSymbol(for: spell))
-                                .font(.system(size: 10))
-                                .foregroundStyle(spellColor(for: spell))
-                                .widgetAccentable()
-                            Text(spell.watchName)
-                                .font(.system(size: 7, weight: .medium))
-                                .foregroundStyle(.white)
-                                .lineLimit(1)
-                            Spacer(minLength: 0)
-                            // Info button
-                            Button(intent: ShowSpellInfoIntent(spellID: spellID)) {
-                                Image(systemName: "info.circle")
-                                    .font(.system(size: 9))
-                                    .foregroundStyle(.white.opacity(0.5))
+                    // Sibling buttons — WidgetKit doesn't support nested buttons
+                    HStack(spacing: 2) {
+                        Button(intent: SelectSpellIntent(spellID: spellID)) {
+                            HStack(spacing: 3) {
+                                Image(systemName: sfSymbol(for: spell))
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(spellColor(for: spell))
+                                    .widgetAccentable()
+                                Text(spell.watchName)
+                                    .font(.system(size: 7, weight: .medium))
+                                    .foregroundStyle(.white)
+                                    .lineLimit(1)
+                                Spacer(minLength: 0)
                             }
-                            .buttonStyle(.plain)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 3)
+                            .background(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(isSelected ? Color.yellow.opacity(0.3) : Color.white.opacity(0.08))
+                                    .widgetAccentable()
+                            )
                         }
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 3)
-                        .background(
-                            RoundedRectangle(cornerRadius: 4)
-                                .fill(isSelected ? Color.yellow.opacity(0.3) : Color.white.opacity(0.08))
-                                .widgetAccentable()
-                        )
+                        .buttonStyle(.plain)
+
+                        Button(intent: ShowSpellInfoIntent(spellID: spellID)) {
+                            Image(systemName: "info.circle")
+                                .font(.system(size: 9))
+                                .foregroundStyle(.white.opacity(0.5))
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
                 }
 
                 Spacer(minLength: 0)
 
-                // Back button
+                // Back button — explicit frame ensures a reliable tap target
                 Button(intent: BackToSelectionIntent()) {
                     HStack(spacing: 2) {
                         Image(systemName: "chevron.left")
@@ -183,6 +186,7 @@ struct WidgetEntryView: View {
                             .font(.system(size: 8, weight: .medium))
                     }
                     .foregroundStyle(.white.opacity(0.5))
+                    .frame(maxWidth: .infinity, minHeight: 24)
                 }
                 .buttonStyle(.plain)
             }

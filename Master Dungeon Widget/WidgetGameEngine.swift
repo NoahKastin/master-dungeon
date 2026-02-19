@@ -124,6 +124,12 @@ struct WidgetGameEngine {
     // MARK: - Gameplay
 
     private static func handleSelectSpell(id: String, state: inout WidgetGameState) -> WidgetGameState {
+        // Cancel targeting when a spell is tapped while in selectTarget phase
+        if state.phase == .selectTarget {
+            state.selectedSpellID = nil
+            state.phase = .selectSpell
+            return state
+        }
         guard state.phase == .selectSpell else { return state }
 
         let spell = resolveSpell(id)
@@ -468,11 +474,11 @@ struct WidgetGameEngine {
 
         state.challengeDescription = challenge.description
 
-        // Place elements, clamped to 7-hex grid
+        // Place elements, clamped to 7-hex grid (also relocate if position already taken)
         var usedPositions: Set<HexCoord> = [.zero]
         for element in challenge.elements {
             var relativePos = element.position
-            if relativePos.distance(to: .zero) > 1 {
+            if relativePos.distance(to: .zero) > 1 || usedPositions.contains(relativePos) {
                 let neighbors = HexCoord.zero.neighbors().filter { !usedPositions.contains($0) }
                 if let nearest = neighbors.first {
                     relativePos = nearest
@@ -499,7 +505,7 @@ struct WidgetGameEngine {
                 ))
                 state.challengeHadEnemies = true
             } else {
-                if let interactive = createInteractive(from: element, at: relativePos) {
+                if let interactive = createInteractive(from: element, at: relativePos, isStealthy: challenge.type == .stealth) {
                     state.interactives.append(interactive)
                 }
             }
@@ -509,10 +515,12 @@ struct WidgetGameEngine {
         return state
     }
 
-    private static func createInteractive(from element: ChallengeElement, at position: HexCoord) -> CodableInteractive? {
+    private static func createInteractive(from element: ChallengeElement, at position: HexCoord, isStealthy: Bool = false) -> CodableInteractive? {
         switch element.type {
         case .target:
-            return CodableInteractive(position: CodableHexCoord(position), kind: "target",
+            // Stealth targets use a distinct kind so completion doesn't require killing the guard
+            let kind = isStealthy ? "stealth_target" : "target"
+            return CodableInteractive(position: CodableHexCoord(position), kind: kind,
                                        currentHP: 0, maxHP: 0, radius: 0, dispelled: false,
                                        activatesId: "", isCompleted: false)
         case .npc(let needsHealing, _):
@@ -557,11 +565,21 @@ struct WidgetGameEngine {
             return
         }
 
-        // Target-based: player reached all targets
+        // Stealth: reach target without needing to kill the guard
+        let stealthTargets = state.interactives.filter { $0.kind == "stealth_target" }
+        if !stealthTargets.isEmpty {
+            let playerPos = state.playerPosition.hexCoord
+            if stealthTargets.allSatisfy({ playerPos == $0.position.hexCoord }) {
+                completeChallenge(state: &state)
+                return
+            }
+        }
+
+        // Target-based: player reached all targets (enemies must also be cleared)
         let targets = state.interactives.filter { $0.kind == "target" }
         if !targets.isEmpty {
             let playerPos = state.playerPosition.hexCoord
-            let allReached = targets.allSatisfy { playerPos.distance(to: $0.position.hexCoord) <= 1 }
+            let allReached = targets.allSatisfy { playerPos == $0.position.hexCoord }
             if allReached && aliveEnemies.isEmpty {
                 completeChallenge(state: &state)
                 return
@@ -583,7 +601,7 @@ struct WidgetGameEngine {
         if !darkness.isEmpty {
             let allDispelled = darkness.allSatisfy { $0.dispelled }
             let playerPos = state.playerPosition.hexCoord
-            let allTargetsReached = targets.allSatisfy { playerPos.distance(to: $0.position.hexCoord) <= 1 }
+            let allTargetsReached = targets.allSatisfy { playerPos == $0.position.hexCoord }
             if allDispelled && (targets.isEmpty || allTargetsReached) {
                 completeChallenge(state: &state)
                 return

@@ -537,7 +537,7 @@ class GameScene: SKScene {
     // MARK: - Rainbow Mode
 
     private func setupRainbow() {
-        lavaColumn = player.position.q - GameScene.visibleRange - 2
+        lavaColumn = player.position.q - GameScene.visibleRange + 1
         nextZoneColumn = player.position.q + RainbowConfig.zoneSpacing
         zonesCleared = 0
         turnsSinceLavaAdvance = 0
@@ -755,6 +755,11 @@ class GameScene: SKScene {
         entities.append(enemy)
         challengeHadEnemies = true  // Mark that this challenge has enemies
 
+        // Stealth guards are truly unkillable on iOS
+        if currentChallenge?.type == .stealth {
+            enemy.isInvulnerable = true
+        }
+
         // Create visual sprite
         let isStealth = currentChallenge?.type == .stealth
         let sprite = createEnemySprite(hp: enemy.hp, behavior: enemy.behavior, isStealth: isStealth)
@@ -909,8 +914,8 @@ class GameScene: SKScene {
                 fillColor = SKColor(red: 0.2, green: 0.8, blue: 0.3, alpha: 1.0)  // Green for healer
                 strokeColor = SKColor(red: 0.1, green: 0.5, blue: 0.2, alpha: 1.0)
             case .summoner:
-                fillColor = SKColor(red: 0.9, green: 0.5, blue: 0.1, alpha: 1.0)  // Orange for summoner
-                strokeColor = SKColor(red: 0.6, green: 0.3, blue: 0.05, alpha: 1.0)
+                fillColor = SKColor(red: 0.15, green: 0.55, blue: 0.4, alpha: 1.0)  // Dark mint for summoner
+                strokeColor = SKColor(red: 0.1, green: 0.35, blue: 0.25, alpha: 1.0)
             default:
                 fillColor = SKColor(red: 0.9, green: 0.2, blue: 0.2, alpha: 1.0)
                 strokeColor = SKColor(red: 0.5, green: 0.1, blue: 0.1, alpha: 1.0)
@@ -1390,10 +1395,11 @@ class GameScene: SKScene {
             }
         }
 
-        // Check for stealth detection
-        if currentChallenge?.type == .stealth {
+        // Check for stealth detection (radius scales with grid size)
+        let detectionRadius = max(0, GameScene.visibleRange - 1)
+        if currentChallenge?.type == .stealth && detectionRadius > 0 {
             for enemy in activeEnemies where enemy.isAlive {
-                if position.distance(to: enemy.position) <= 2 {
+                if position.distance(to: enemy.position) <= detectionRadius {
                     playerDetected = true
                     showStatusText("Detected!", at: worldToScreen(enemy.position), color: .red)
                 }
@@ -1988,8 +1994,8 @@ class GameScene: SKScene {
         for (_, element) in interactiveElements {
             if case .target = element.type {
                 targetCount += 1
-                // Check if player is on or adjacent to target
-                if player.position == element.position || player.position.distance(to: element.position) <= 1 {
+                // Check if player is on the target hex
+                if player.position == element.position {
                     continue  // Target reached
                 }
                 print("TARGET DEBUG: Target at \(element.position), player at \(player.position), distance=\(player.position.distance(to: element.position))")
@@ -2104,14 +2110,14 @@ class GameScene: SKScene {
                     if let sprite = enemySprites[enemy.id] {
                         let worldPos = CGPoint(x: sprite.position.x + entityLayer.position.x,
                                                y: sprite.position.y + entityLayer.position.y)
-                        showStatusText("Summoned!", at: worldPos, color: .orange)
+                        showStatusText("Summoned!", at: worldPos, color: SKColor(red: 0.15, green: 0.55, blue: 0.4, alpha: 1.0))
                     }
-                    // Orange flash at the minion spawn hex
+                    // Dark mint flash at the minion spawn hex
                     let minionLocal = center - player.position
                     let minionScreen = hexLayout.hexToScreen(minionLocal)
                     let minionWorld = CGPoint(x: minionScreen.x + entityLayer.position.x,
                                              y: minionScreen.y + entityLayer.position.y)
-                    showSpellFlash(color: .orange, at: minionWorld)
+                    showSpellFlash(color: SKColor(red: 0.15, green: 0.55, blue: 0.4, alpha: 1.0), at: minionWorld)
                 }
 
             case .healAlly(let amount, let range):
