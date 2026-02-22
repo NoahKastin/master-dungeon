@@ -101,7 +101,9 @@ class ManaDisplay: SKNode {
     }
 
     func setMana(_ mana: Int) {
-        currentMana = max(0, min(maxMana, mana))
+        let clamped = max(0, min(maxMana, mana))
+        guard clamped != currentMana else { return }
+        currentMana = clamped
 
         for (index, halfNode) in halfNodes.enumerated() {
             halfNode.removeAllChildren()
@@ -232,7 +234,9 @@ class HPDisplay: SKNode {
     }
 
     func setHP(_ hp: Int) {
-        currentHP = max(0, min(maxHP, hp))
+        let clamped = max(0, min(maxHP, hp))
+        guard clamped != currentHP else { return }
+        currentHP = clamped
 
         for (index, heartNode) in heartNodes.enumerated() {
             heartNode.removeAllChildren()
@@ -615,6 +619,54 @@ struct SpellIcons {
             path.addCurve(to: CGPoint(x: s * 0.2, y: s * 0.5),
                           control1: CGPoint(x: 0, y: s * 0.6),
                           control2: CGPoint(x: s * 0.1, y: s * 0.6))
+
+        case "hold-person":
+            // Outstretched hand with binding lines (paralysis)
+            path.move(to: CGPoint(x: -s * 0.2, y: -s * 0.8))
+            path.addLine(to: CGPoint(x: -s * 0.2, y: s * 0.1))
+            // Spread fingers
+            path.move(to: CGPoint(x: -s * 0.2, y: s * 0.1))
+            path.addLine(to: CGPoint(x: -s * 0.55, y: s * 0.65))
+            path.move(to: CGPoint(x: -s * 0.2, y: s * 0.1))
+            path.addLine(to: CGPoint(x: -s * 0.15, y: s * 0.8))
+            path.move(to: CGPoint(x: -s * 0.2, y: s * 0.1))
+            path.addLine(to: CGPoint(x: s * 0.1, y: s * 0.75))
+            path.move(to: CGPoint(x: -s * 0.2, y: s * 0.1))
+            path.addLine(to: CGPoint(x: s * 0.38, y: s * 0.5))
+            // Binding lines across
+            path.move(to: CGPoint(x: -s * 0.65, y: s * 0.05))
+            path.addLine(to: CGPoint(x: s * 0.55, y: s * 0.05))
+            path.move(to: CGPoint(x: -s * 0.55, y: s * 0.38))
+            path.addLine(to: CGPoint(x: s * 0.45, y: s * 0.38))
+
+        case "shillelagh":
+            // Knobbly club — shaft diagonal, knob at tip
+            path.move(to: CGPoint(x: -s * 0.5, y: -s * 0.85))
+            path.addLine(to: CGPoint(x: s * 0.2, y: s * 0.35))
+            // Knob
+            path.addArc(center: CGPoint(x: s * 0.38, y: s * 0.55),
+                        radius: s * 0.28,
+                        startAngle: .pi * 1.3,
+                        endAngle: .pi * 0.3,
+                        clockwise: false)
+            // Small bump on shaft for texture
+            path.move(to: CGPoint(x: -s * 0.12, y: -s * 0.2))
+            path.addArc(center: CGPoint(x: -s * 0.05, y: -s * 0.12),
+                        radius: s * 0.13,
+                        startAngle: .pi * 1.5,
+                        endAngle: .pi * 0.5,
+                        clockwise: false)
+
+        case "hallow":
+            // Divine sunburst — inner circle + 8 rays
+            let innerR = s * 0.28
+            let outerR = s * 0.9
+            path.addArc(center: .zero, radius: innerR, startAngle: 0, endAngle: .pi * 2, clockwise: false)
+            for i in 0..<8 {
+                let angle = CGFloat(i) * .pi / 4
+                path.move(to: CGPoint(x: cos(angle) * innerR, y: sin(angle) * innerR))
+                path.addLine(to: CGPoint(x: cos(angle) * outerR, y: sin(angle) * outerR))
+            }
 
         default:
             // Fallback: simple star

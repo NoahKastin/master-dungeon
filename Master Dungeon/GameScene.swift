@@ -34,6 +34,7 @@ class GameScene: SKScene {
         case .easy: return 1
         case .medium: return 2
         case .rainbow: return RainbowConfig.visibleRange
+        case .team: return 3
         default: return 3
         }
     }
@@ -88,6 +89,48 @@ class GameScene: SKScene {
 
     // MARK: - Rainbow Mode
     private var isRainbow: Bool { GameManager.shared.gameMode == .rainbow }
+
+    // MARK: - Team Mode
+    private var isTeam: Bool { GameManager.shared.gameMode == .team }
+
+    // Player colors
+    static let teamColors: [SKColor] = [
+        SKColor(red: 0.3, green: 0.6, blue: 1.0, alpha: 1.0),  // Blue
+        SKColor(red: 0.9, green: 0.3, blue: 0.3, alpha: 1.0),  // Red
+        SKColor(red: 0.3, green: 0.8, blue: 0.3, alpha: 1.0),  // Green
+        SKColor(red: 1.0, green: 0.8, blue: 0.2, alpha: 1.0),  // Gold
+    ]
+
+    // Challenge offsets: each player's challenge spawns at a different compass point
+    static let teamChallengeOffsets: [HexCoord] = [
+        HexCoord(q:  0, r: -4),  // Player 0: north
+        HexCoord(q:  4, r:  0),  // Player 1: east
+        HexCoord(q:  0, r:  4),  // Player 2: south
+        HexCoord(q: -4, r:  0),  // Player 3: west
+    ]
+
+    struct TeamMemberState {
+        let index: Int
+        let color: SKColor
+        var hp: Int
+        var mana: Int
+        var worldPosition: HexCoord
+        var isDowned: Bool
+        var loadout: SpellLoadout
+        var challengeCompleted: Bool
+        var challengeDescription: String  // For per-player objective label
+        var sprite: SKShapeNode?
+        var arrowNode: SKNode?
+    }
+
+    private var teamMembers: [TeamMemberState] = []
+    private var activeTeamIndex: Int = 0
+    private var teamActedThisRound: Set<Int> = []
+    private var teamChallengeHadEnemies: [Int: Bool] = [:]  // Per-player enemy tracking
+    private var isActingThisTurn: Bool = false               // Blocks double-actions
+    private var teamTurnOverlay: SKNode?
+    private var endTurnButton: SKNode?
+    private var teamStatusLabel: SKLabelNode?
     private var lavaColumn: Int = Int.min
     private var turnsSinceLavaAdvance: Int = 0
     private var nextZoneColumn: Int = 0
@@ -125,6 +168,10 @@ class GameScene: SKScene {
 
         if isRainbow {
             setupRainbow()
+        } else if isTeam {
+            setupTeamPlayers()
+            generateTeamChallenges()
+            showTeamTurnOverlay(for: 0)
         } else {
             generateNewChallenge()
         }
@@ -282,6 +329,7 @@ class GameScene: SKScene {
         }
 
         // Bottom bar — PotionBar in rainbow, SpellBar otherwise
+        // Team mode: spell bar is built per-player in loadTeamPlayerState (loadout changes each turn)
         if isRainbow {
             let bar = PotionBar()
             bar.position = CGPoint(x: size.width / 2, y: safeBottom + 50)
@@ -290,7 +338,7 @@ class GameScene: SKScene {
             }
             uiLayer.addChild(bar)
             potionBar = bar
-        } else {
+        } else if !isTeam {
             let spells = player.loadout.spells
             if !spells.isEmpty {
                 let bar = SpellBar(spells: spells, slotSize: 60)
@@ -310,9 +358,10 @@ class GameScene: SKScene {
         objective.position = CGPoint(x: size.width / 2, y: size.height - safeTop - 70)
         objective.horizontalAlignmentMode = .center
         objective.verticalAlignmentMode = .top
-        objective.numberOfLines = 0  // Unlimited lines
+        // Team mode: 1 line only — objective sits just above ally HP status label
+        objective.numberOfLines = isTeam ? 1 : 0
         objective.preferredMaxLayoutWidth = size.width - 40  // Wrap with 20pt padding on each side
-        objective.lineBreakMode = .byWordWrapping
+        objective.lineBreakMode = isTeam ? .byTruncatingTail : .byWordWrapping
         uiLayer.addChild(objective)
         objectiveLabel = objective
 
@@ -393,6 +442,11 @@ class GameScene: SKScene {
                 sprite.position = hexLayout.hexToScreen(localCoord)
             }
         }
+
+        // Update non-active player sprites as the active player moves
+        if isTeam {
+            updateNonActivePlayerSprites()
+        }
     }
 
     // MARK: - Spell Selection
@@ -411,13 +465,13 @@ class GameScene: SKScene {
 
             switch result {
             case .success(let effect):
+                isActingThisTurn = isTeam
                 applySpellEffect(spell: spell, at: player.position, effect: effect)
                 showSpellEffect(spell: spell, at: player.position, effect: effect)
 
-                if !spell.isPassive {
-                    selectedSpell = nil
-                    spellBar?.deselectAll()
-                }
+                // Always deselect after casting (passive spells like Blur still end input state)
+                selectedSpell = nil
+                spellBar?.deselectAll()
 
             case .failure(let error):
                 showCastError(error)
@@ -491,7 +545,7 @@ class GameScene: SKScene {
             // Set up timed challenge timer (stealth and light-only puzzle challenges have a timer)
             let isLightOnlyPuzzle = challenge.type == .puzzle
                 && challenge.requiredCapabilities == [.illumination]
-            if challenge.type == .timed || challenge.type == .stealth || isLightOnlyPuzzle {
+            if !isTeam && (challenge.type == .timed || challenge.type == .stealth || isLightOnlyPuzzle) {
                 switch GameManager.shared.gameMode {
                 case .easy: challengeTimeLimit = 20.0
                 case .medium: challengeTimeLimit = 15.0
@@ -532,6 +586,797 @@ class GameScene: SKScene {
         }
 
         updateGridPosition()
+    }
+
+    // MARK: - Team Mode
+
+    // Log of events that happened to each player since their last turn (shown in turn overlay)
+    private var teamTurnLog: [Int: [String]] = [:]  // playerIndex: [event strings]
+
+    private func appendTeamLog(for playerIndex: Int, _ message: String) {
+        teamTurnLog[playerIndex, default: []].append(message)
+    }
+
+    private func setupTeamPlayers() {
+        let count = GameManager.shared.teamPlayerCount
+        let loadouts = GameManager.shared.playerLoadouts
+        teamMembers = []
+
+        for i in 0..<count {
+            let color = GameScene.teamColors[i % GameScene.teamColors.count]
+            let loadout = loadouts[i] ?? SpellLoadout()
+            // Stagger starting positions so players aren't on top of each other
+            let startOffsets: [HexCoord] = [.zero, HexCoord(q: 0, r: -1), HexCoord(q: 1, r: 0), HexCoord(q: -1, r: 0)]
+            let startPos = startOffsets[i % startOffsets.count]
+            let state = TeamMemberState(
+                index: i,
+                color: color,
+                hp: Player.maxHP,
+                mana: Player.maxMana,
+                worldPosition: startPos,
+                isDowned: false,
+                loadout: loadout,
+                challengeCompleted: false,
+                challengeDescription: "",
+                sprite: nil,
+                arrowNode: nil
+            )
+            teamMembers.append(state)
+        }
+
+        // Configure the existing player object for player 0
+        player.setLoadout(teamMembers[0].loadout)
+        playerSprite.fillColor = teamMembers[0].color
+        activeTeamIndex = 0
+        GameManager.shared.activePlayerIndex = 0
+
+        // Create non-active player sprites for ALL players (shown when that player isn't the active one)
+        for i in 0..<count {
+            let color = teamMembers[i].color
+            let sprite = SKShapeNode(circleOfRadius: hexSize * 0.3)
+            sprite.fillColor = color.withAlphaComponent(0.5)
+            sprite.strokeColor = color
+            sprite.lineWidth = 1.5
+            sprite.zPosition = 4
+            sprite.isHidden = true  // All start hidden; shown for non-active players
+            entityLayer.addChild(sprite)
+            teamMembers[i].sprite = sprite
+
+            let numLabel = SKLabelNode(fontNamed: "Cochin-Bold")
+            numLabel.text = "\(i + 1)"
+            numLabel.fontSize = hexSize * 0.3
+            numLabel.fontColor = .white
+            numLabel.verticalAlignmentMode = .center
+            numLabel.zPosition = 5
+            sprite.addChild(numLabel)
+
+            // Create offscreen arrow for each player
+            let arrow = makeOffscreenArrow(color: color, playerIndex: i)
+            arrow.isHidden = true
+            uiLayer.addChild(arrow)
+            teamMembers[i].arrowNode = arrow
+        }
+
+        // Setup team-specific UI
+        setupTeamUI()
+    }
+
+    private func makeOffscreenArrow(color: SKColor, playerIndex: Int) -> SKNode {
+        let container = SKNode()
+        container.zPosition = 150
+
+        // Triangle arrow
+        let path = CGMutablePath()
+        let s: CGFloat = 14
+        path.move(to: CGPoint(x: 0, y: s))
+        path.addLine(to: CGPoint(x: -s * 0.65, y: -s * 0.5))
+        path.addLine(to: CGPoint(x:  s * 0.65, y: -s * 0.5))
+        path.closeSubpath()
+        let arrow = SKShapeNode(path: path)
+        arrow.fillColor = color
+        arrow.strokeColor = .white
+        arrow.lineWidth = 1.5
+        container.addChild(arrow)
+
+        // Label: "P2: 10"
+        let lbl = SKLabelNode(fontNamed: "Cochin-Bold")
+        lbl.name = "arrowLabel"
+        lbl.fontSize = 10
+        lbl.fontColor = .white
+        lbl.verticalAlignmentMode = .top
+        lbl.horizontalAlignmentMode = .center
+        lbl.position = CGPoint(x: 0, y: -s * 0.5 - 2)
+        container.addChild(lbl)
+
+        return container
+    }
+
+    private func setupTeamUI() {
+        let rawSafeArea = view?.safeAreaInsets ?? .zero
+        let safeBottom = rawSafeArea.bottom > 0 ? rawSafeArea.bottom : 34
+
+        // End Turn button (bottom right)
+        let btnW: CGFloat = 90
+        let btnH: CGFloat = 40
+        let btn = SKNode()
+        btn.position = CGPoint(x: size.width - btnW / 2 - 10, y: safeBottom + 110)
+        btn.zPosition = 105
+        btn.name = "endTurnButton"
+
+        let btnBg = SKShapeNode(rectOf: CGSize(width: btnW, height: btnH), cornerRadius: 10)
+        btnBg.fillColor = SKColor(white: 0.25, alpha: 0.95)
+        btnBg.strokeColor = teamMembers[0].color
+        btnBg.lineWidth = 2
+        btnBg.name = "endTurnButton"
+        btn.addChild(btnBg)
+
+        let btnLabel = SKLabelNode(fontNamed: "Cochin-Bold")
+        btnLabel.text = "End Turn"
+        btnLabel.fontSize = 13
+        btnLabel.fontColor = .white
+        btnLabel.verticalAlignmentMode = .center
+        btnLabel.name = "endTurnButton"
+        btn.addChild(btnLabel)
+
+        uiLayer.addChild(btn)
+        endTurnButton = btn
+
+        // Team status label (below objective)
+        let rawSafeTop = view?.safeAreaInsets.top ?? 0
+        let safeTop = rawSafeTop > 0 ? rawSafeTop : 59
+
+        let statusLbl = SKLabelNode(fontNamed: "Cochin")
+        statusLbl.fontSize = 12
+        statusLbl.fontColor = SKColor(white: 0.75, alpha: 1.0)
+        statusLbl.position = CGPoint(x: size.width / 2, y: size.height - safeTop - 110)
+        statusLbl.horizontalAlignmentMode = .center
+        statusLbl.zPosition = 100
+        uiLayer.addChild(statusLbl)
+        teamStatusLabel = statusLbl
+        updateTeamStatusLabel()
+    }
+
+    private func updateTeamStatusLabel() {
+        guard isTeam else { return }
+        let parts = teamMembers.map { m -> String in
+            let prefix = m.isDowned ? "💀" : "P\(m.index + 1)"
+            return "\(prefix):\(m.index == activeTeamIndex ? player.hp : m.hp)"
+        }
+        teamStatusLabel?.text = parts.joined(separator: " | ")
+    }
+
+    private func generateTeamChallenges() {
+        let difficulty = 1 + GameManager.shared.challengesCompleted / ChallengeAI.bossInterval
+
+        // Clear all old enemies and challenge elements
+        for enemy in activeEnemies { enemySprites[enemy.id]?.removeFromParent() }
+        activeEnemies.removeAll()
+        enemySprites.removeAll()
+        for (_, sprite) in interactiveSprites { sprite.removeFromParent() }
+        interactiveElements.removeAll()
+        interactiveSprites.removeAll()
+        for (sprite, _) in challengeSprites { sprite.removeFromParent() }
+        challengeSprites.removeAll()
+        blockedHexes.removeAll()
+        playerDetected = false
+        challengeTimer = 0
+        challengeTimeLimit = 0
+        challengeCompleted = false
+        challengeHadEnemies = false
+        teamChallengeHadEnemies.removeAll()
+        teamActedThisRound.removeAll()
+        teamTurnLog.removeAll()
+
+        // Reset per-player challenge completion flags
+        for i in 0..<teamMembers.count {
+            teamMembers[i].challengeCompleted = false
+        }
+
+        // Collect current world positions of all players so enemies don't spawn on them
+        let playerWorldPositions = Set(teamMembers.enumerated().map { idx, m -> HexCoord in
+            idx == activeTeamIndex ? player.position : m.worldPosition
+        })
+
+        // Generate one challenge per player, all challenges spawn from (0,0)
+        // but with compass-point offsets
+        for i in 0..<teamMembers.count {
+            let loadout = teamMembers[i].loadout
+            let challenge = challengeGenerator.generateChallenge(for: loadout, difficulty: difficulty)
+
+            // challengeHadEnemies tracks whether ANY challenge has enemies
+            let offset = GameScene.teamChallengeOffsets[i % GameScene.teamChallengeOffsets.count]
+
+            for element in challenge.elements {
+                let worldPosition = element.position + offset  // Offset from (0,0)
+
+                if case .obstacle(let blocking, _) = element.type, blocking {
+                    blockedHexes.insert(worldPosition)
+                }
+
+                if let enemy = EnemyFactory.createEnemy(from: element, at: worldPosition) {
+                    // Never spawn an enemy on top of a player
+                    guard !playerWorldPositions.contains(worldPosition) else { continue }
+                    enemy.teamOwnerIndex = i
+                    spawnEnemy(enemy)
+                    challengeHadEnemies = true
+                    teamChallengeHadEnemies[i] = true
+                } else {
+                    if let interactive = createInteractiveElement(from: element, at: worldPosition) {
+                        interactiveElements[interactive.id] = interactive
+                    }
+                    renderChallengeElementAt(element, worldPosition: worldPosition)
+                }
+            }
+
+            // Store challenge description for per-player objective label
+            teamMembers[i].challengeDescription = challenge.description
+
+            // Update objective for active player's challenge
+            if i == activeTeamIndex {
+                objectiveLabel?.text = challenge.description
+            }
+        }
+
+        // Post-load darkness visibility pass
+        for enemy in activeEnemies { updateEnemyDarknessVisibility(enemy) }
+
+        // Store challenges per player (for per-player objective label updates)
+        updateGridPosition()
+    }
+
+    private func markActivePlayerActed() {
+        guard isTeam else { return }
+
+        // If all challenges already complete, the round-clear flow handles the next step
+        if challengeCompleted { return }
+
+        // Save active player's current state before advancing
+        teamMembers[activeTeamIndex].hp = player.hp
+        teamMembers[activeTeamIndex].mana = player.mana
+        teamMembers[activeTeamIndex].worldPosition = player.position
+
+        teamActedThisRound.insert(activeTeamIndex)
+        let nonDownedIndices = teamMembers.filter { !$0.isDowned }.map { $0.index }
+
+        if Set(nonDownedIndices).isSubset(of: teamActedThisRound) {
+            // All players have acted — enemies take their combined turn
+            teamActedThisRound.removeAll()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                guard let self = self else { return }
+                self.processTeamEnemyTurns()
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+                    self?.startNextTeamRound()
+                }
+            }
+        } else {
+            advanceTeamTurn()
+        }
+    }
+
+    private func advanceTeamTurn() {
+        guard isTeam else { return }
+
+        // Find next non-downed, not-yet-acted player
+        let count = teamMembers.count
+        var nextIndex = (activeTeamIndex + 1) % count
+        var loopCount = 0
+        while (teamMembers[nextIndex].isDowned || teamActedThisRound.contains(nextIndex)) && loopCount < count {
+            nextIndex = (nextIndex + 1) % count
+            loopCount += 1
+        }
+
+        // Show turn overlay for next player
+        showTeamTurnOverlay(for: nextIndex)
+    }
+
+    private func startNextTeamRound() {
+        guard isTeam else { return }
+
+        // Re-save active player's state after enemy turns (combat may have changed HP/mana)
+        teamMembers[activeTeamIndex].hp = player.hp
+        teamMembers[activeTeamIndex].mana = player.mana
+
+        checkTeamChallengeCompletion()
+
+        // Find first non-downed player for the new round
+        guard let firstPlayer = teamMembers.first(where: { !$0.isDowned }) else {
+            showGameOver()
+            return
+        }
+        showTeamTurnOverlay(for: firstPlayer.index)
+    }
+
+    private func showTeamTurnOverlay(for playerIndex: Int) {
+        guard isTeam, playerIndex < teamMembers.count else { return }
+
+        // Remove any existing overlay
+        teamTurnOverlay?.removeFromParent()
+        teamTurnOverlay = nil
+
+        let member = teamMembers[playerIndex]
+        let hp = playerIndex == activeTeamIndex ? player.hp : member.hp
+        let mana = playerIndex == activeTeamIndex ? player.mana : member.mana
+
+        let overlay = SKNode()
+        overlay.zPosition = 400
+        overlay.name = "teamTurnOverlay_\(playerIndex)"
+
+        // Dark overlay background
+        let bg = SKShapeNode(rectOf: CGSize(width: size.width, height: size.height))
+        bg.fillColor = member.color.withAlphaComponent(0.3)
+        bg.strokeColor = .clear
+        bg.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        overlay.addChild(bg)
+
+        // Panel
+        let panelW = min(size.width - 60, 320)
+        let panelH: CGFloat = 200
+        let panel = SKShapeNode(rectOf: CGSize(width: panelW, height: panelH), cornerRadius: 16)
+        panel.fillColor = SKColor(white: 0.12, alpha: 0.98)
+        panel.strokeColor = member.color
+        panel.lineWidth = 3
+        panel.position = CGPoint(x: size.width / 2, y: size.height / 2 + 20)
+        overlay.addChild(panel)
+
+        // Player number
+        let titleLbl = SKLabelNode(fontNamed: "Cochin-Bold")
+        titleLbl.text = "Player \(playerIndex + 1)'s Turn"
+        titleLbl.fontSize = 26
+        titleLbl.fontColor = member.color
+        titleLbl.verticalAlignmentMode = .center
+        titleLbl.position = CGPoint(x: size.width / 2, y: panel.position.y + 60)
+        overlay.addChild(titleLbl)
+
+        // HP and Mana
+        let statsLbl = SKLabelNode(fontNamed: "Cochin")
+        statsLbl.text = "HP: \(hp)/\(Player.maxHP)  ·  Mana: \(mana)/\(Player.maxMana)"
+        statsLbl.fontSize = 16
+        statsLbl.fontColor = SKColor(white: 0.85, alpha: 1.0)
+        statsLbl.verticalAlignmentMode = .center
+        statsLbl.position = CGPoint(x: size.width / 2, y: panel.position.y + 20)
+        overlay.addChild(statsLbl)
+
+        // What happened since last turn
+        let log = teamTurnLog[playerIndex] ?? []
+        let logHeaderLbl = SKLabelNode(fontNamed: "Cochin-Bold")
+        logHeaderLbl.text = log.isEmpty ? "Nothing new since your last turn." : "Since your last turn:"
+        logHeaderLbl.fontSize = 12
+        logHeaderLbl.fontColor = SKColor(white: 0.6, alpha: 1.0)
+        logHeaderLbl.verticalAlignmentMode = .center
+        logHeaderLbl.position = CGPoint(x: size.width / 2, y: panel.position.y - 10)
+        overlay.addChild(logHeaderLbl)
+
+        if !log.isEmpty {
+            let logText = log.suffix(3).joined(separator: "\n")
+            let logLbl = SKLabelNode(fontNamed: "Cochin")
+            logLbl.text = logText
+            logLbl.fontSize = 11
+            logLbl.fontColor = SKColor(white: 0.7, alpha: 1.0)
+            logLbl.numberOfLines = 0
+            logLbl.preferredMaxLayoutWidth = panelW - 30
+            logLbl.lineBreakMode = .byWordWrapping
+            logLbl.verticalAlignmentMode = .top
+            logLbl.horizontalAlignmentMode = .center
+            logLbl.position = CGPoint(x: size.width / 2, y: panel.position.y - 28)
+            overlay.addChild(logLbl)
+        }
+
+        // Clear this player's log now that they've seen it
+        teamTurnLog[playerIndex] = []
+
+        // "Tap to play" hint
+        let hintLbl = SKLabelNode(fontNamed: "Cochin")
+        hintLbl.text = "Tap to Play"
+        hintLbl.fontSize = 14
+        hintLbl.fontColor = SKColor(white: 0.55, alpha: 1.0)
+        hintLbl.verticalAlignmentMode = .center
+        hintLbl.position = CGPoint(x: size.width / 2, y: panel.position.y - 82)
+        overlay.addChild(hintLbl)
+
+        addChild(overlay)
+        teamTurnOverlay = overlay
+        overlay.alpha = 0
+        overlay.run(SKAction.fadeIn(withDuration: 0.2))
+
+        // Store pending player index for when overlay is dismissed
+        overlay.userData = NSMutableDictionary()
+        overlay.userData?["playerIndex"] = playerIndex
+    }
+
+    private func dismissTeamTurnOverlay() {
+        guard let overlay = teamTurnOverlay,
+              let playerIndex = overlay.userData?["playerIndex"] as? Int
+        else { return }
+
+        teamTurnOverlay = nil
+        overlay.run(SKAction.sequence([
+            SKAction.fadeOut(withDuration: 0.15),
+            SKAction.removeFromParent()
+        ]))
+
+        loadTeamPlayerState(playerIndex)
+    }
+
+    private func loadTeamPlayerState(_ index: Int) {
+        guard isTeam, index < teamMembers.count else { return }
+
+        let member = teamMembers[index]
+        activeTeamIndex = index
+        GameManager.shared.activePlayerIndex = index
+        isActingThisTurn = false
+
+        // Clear any targeting overlay from the previous player's turn
+        clearHighlights()
+        selectedSpell = nil
+        spellBar?.deselectAll()
+
+        player.teleportTo(member.worldPosition)
+        player.setHP(member.isDowned ? 0 : member.hp)
+        player.setMana(member.mana)
+        player.setLoadout(member.loadout)
+
+        // Update player sprite color
+        playerSprite.fillColor = member.color
+        playerSprite.strokeColor = member.isDowned
+            ? SKColor(white: 0.4, alpha: 1.0) : SKColor.white
+        playerSprite.alpha = member.isDowned ? 0.4 : 1.0
+
+        // Update spell bar
+        if let bar = spellBar {
+            bar.removeFromParent()
+            spellBar = nil
+        }
+        if !member.isDowned {
+            let rawSafeArea = view?.safeAreaInsets ?? .zero
+            let safeBottom = rawSafeArea.bottom > 0 ? rawSafeArea.bottom : 34
+            let spells = member.loadout.spells
+            if !spells.isEmpty {
+                let bar = SpellBar(spells: spells, slotSize: 60)
+                bar.position = CGPoint(x: size.width / 2, y: safeBottom + 50)
+                bar.onSpellSelected = { [weak self] spell in self?.selectSpell(spell) }
+                uiLayer.addChild(bar)
+                spellBar = bar
+            }
+        }
+
+        // Update End Turn button stroke color
+        if let btn = endTurnButton?.children.first(where: { $0 is SKShapeNode }) as? SKShapeNode {
+            btn.strokeColor = member.color
+        }
+
+        hpDisplay?.setHP(player.hp)
+        manaBar?.setMana(player.mana)
+
+        // Update objective label for this player's challenge
+        let desc = teamMembers[index].challengeDescription
+        if teamMembers[index].challengeCompleted {
+            objectiveLabel?.text = "✓ " + desc
+        } else {
+            objectiveLabel?.text = desc
+        }
+
+        updateGridPosition()  // also calls updateNonActivePlayerSprites()
+        updateTeamStatusLabel()
+        refreshEnemyStunVisuals()
+    }
+
+    private func updateNonActivePlayerSprites() {
+        guard isTeam, activeTeamIndex < teamMembers.count else { return }
+
+        // Always hide the active player's secondary sprite/arrow — they use the main playerSprite
+        teamMembers[activeTeamIndex].sprite?.isHidden = true
+        teamMembers[activeTeamIndex].arrowNode?.isHidden = true
+
+        for i in 0..<teamMembers.count where i != activeTeamIndex {
+            let member = teamMembers[i]
+            let worldPos = member.worldPosition
+            let localCoord = worldPos - player.position
+            let dist = worldPos.distance(to: player.position)
+
+            if let sprite = member.sprite {
+                if dist <= GameScene.visibleRange {
+                    sprite.isHidden = false
+                    sprite.position = hexLayout.hexToScreen(localCoord)
+                    sprite.alpha = member.isDowned ? 0.25 : 0.7
+                } else {
+                    sprite.isHidden = true
+                }
+            }
+
+            // Update arrow
+            updateOffscreenArrow(for: i)
+        }
+    }
+
+    private func updateOffscreenArrow(for playerIndex: Int) {
+        guard playerIndex < teamMembers.count else { return }
+        let member = teamMembers[playerIndex]
+        guard let arrow = member.arrowNode else { return }
+
+        let worldPos = member.worldPosition
+        let dist = worldPos.distance(to: player.position)
+
+        if dist > GameScene.visibleRange {
+            arrow.isHidden = false
+
+            // Direction from active player to this player in screen space
+            let localCoord = worldPos - player.position
+            let targetScreen = hexLayout.hexToScreen(localCoord)
+            let dx = targetScreen.x - hexLayout.origin.x + size.width / 2
+            let dy = targetScreen.y - hexLayout.origin.y + size.height / 2
+            let angle = atan2(dy - size.height / 2, dx - size.width / 2)
+
+            // Place at screen edge
+            let margin: CGFloat = 28
+            let edgeX = size.width / 2 + cos(angle) * (size.width / 2 - margin)
+            let edgeY = size.height / 2 + sin(angle) * (size.height / 2 - margin)
+            arrow.position = CGPoint(x: edgeX, y: edgeY)
+            arrow.zRotation = angle - .pi / 2  // Triangle points toward player
+
+            // Update label
+            let hp = playerIndex == activeTeamIndex ? player.hp : member.hp
+            if let lbl = arrow.childNode(withName: "arrowLabel") as? SKLabelNode {
+                lbl.text = "P\(playerIndex + 1):\(hp)"
+            }
+        } else {
+            arrow.isHidden = true
+        }
+    }
+
+    private func handleEndTurn() {
+        guard isTeam, !isActingThisTurn else { return }
+        isActingThisTurn = true
+        selectSpell(nil)
+        spellBar?.deselectAll()
+        markActivePlayerActed()
+    }
+
+    private func checkTeamChallengeCompletion() {
+        guard isTeam, !challengeCompleted else { return }
+
+        // Check if active player's challenge enemies are all dead
+        let activePlayerEnemies = activeEnemies.filter { $0.isAlive && $0.teamOwnerIndex == activeTeamIndex }
+
+        // Check if all enemies for this player have been defeated
+        let hadEnemies = teamChallengeHadEnemies[activeTeamIndex] == true
+        let allDefeated = activePlayerEnemies.isEmpty
+        if hadEnemies && allDefeated && !teamMembers[activeTeamIndex].challengeCompleted {
+            teamMembers[activeTeamIndex].challengeCompleted = true
+            let memberColor = teamMembers[activeTeamIndex].color
+            showStatusText("P\(activeTeamIndex + 1) done!", at: CGPoint(x: size.width / 2, y: size.height / 2 + 40), color: memberColor)
+        }
+
+        // Non-combat (puzzle): complete when all interactive elements in this player's area are solved
+        if !hadEnemies && !teamMembers[activeTeamIndex].challengeCompleted {
+            if checkTeamPuzzleSolved(for: activeTeamIndex) {
+                teamMembers[activeTeamIndex].challengeCompleted = true
+                let memberColor = teamMembers[activeTeamIndex].color
+                showStatusText("P\(activeTeamIndex + 1) done!", at: CGPoint(x: size.width / 2, y: size.height / 2 + 40), color: memberColor)
+            }
+        }
+
+        // Check if ALL non-downed players have completed their challenges
+        let allDone = teamMembers.allSatisfy { $0.challengeCompleted || $0.isDowned }
+        if allDone {
+            challengeCompleted = true
+            GameManager.shared.completeChallenge()
+            scoreLabel?.text = "Score: \(GameManager.shared.challengesCompleted)"
+            showStatusText("Round Clear!", at: CGPoint(x: size.width / 2, y: size.height / 2 + 60), color: .yellow)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                guard let self = self else { return }
+                self.challengeCompleted = false
+                self.generateTeamChallenges()
+                self.showTeamTurnOverlay(for: self.activeTeamIndex)
+            }
+        }
+    }
+
+    /// Check if a non-combat (puzzle) challenge is solved for the given team player.
+    /// Filters interactive elements to only those within that player's challenge area.
+    private func checkTeamPuzzleSolved(for playerIndex: Int) -> Bool {
+        let offset = GameScene.teamChallengeOffsets[playerIndex % GameScene.teamChallengeOffsets.count]
+        let area = interactiveElements.values.filter {
+            $0.position.distance(to: offset) <= ChallengeAI.hexRange + 1
+        }
+        guard !area.isEmpty else { return false }
+        for element in area {
+            switch element.type {
+            case .darkness(_, let dispelled):
+                if !dispelled { return false }
+            case .trigger:
+                if !element.isCompleted { return false }
+            case .target:
+                if player.position.distance(to: element.position) > 1 { return false }
+            default:
+                break
+            }
+        }
+        return true
+    }
+
+    private func processTeamEnemyTurns() {
+        guard isTeam else { return }
+
+        let enemyPositions = Set(activeEnemies.filter { $0.isAlive }.map { $0.position })
+        // Downed players block enemy movement so enemies can't stack on them
+        let downedPositions = Set(teamMembers.filter { $0.isDowned }.map { m -> HexCoord in
+            m.index == activeTeamIndex ? player.position : m.worldPosition
+        })
+        let pathBlocked = blockedHexes.union(enemyPositions).union(downedPositions)
+
+        for enemy in activeEnemies where enemy.isAlive {
+            let blockedForThisEnemy = pathBlocked.subtracting([enemy.position])
+
+            // Find nearest non-downed team member
+            let nonDownedMembers = teamMembers.filter { !$0.isDowned }
+            let targetPosition: HexCoord
+            if let nearest = nonDownedMembers.min(by: {
+                enemy.position.distance(to: $0.index == activeTeamIndex ? player.position : $0.worldPosition) <
+                enemy.position.distance(to: $1.index == activeTeamIndex ? player.position : $1.worldPosition)
+            }) {
+                targetPosition = nearest.index == activeTeamIndex ? player.position : nearest.worldPosition
+            } else {
+                targetPosition = player.position
+            }
+
+            let action = enemy.takeTurn(playerPosition: targetPosition, blocked: blockedForThisEnemy)
+
+            switch action {
+            case .attack(let at, let damage):
+                // Find which team member is at the attacked hex
+                applyTeamEnemyDamage(at: at, damage: damage)
+
+            case .move:
+                break
+
+            case .specialAttack(let type, let center, let radius, let damage):
+                if type == .areaSlam {
+                    let affected = center.hexesInRange(radius)
+                    for hex in affected {
+                        applyTeamEnemyDamage(at: hex, damage: damage)
+                    }
+                } else if type == .summon {
+                    let minion = Enemy(hp: 1, damage: damage, behavior: .aggressive, position: center)
+                    minion.teamOwnerIndex = enemy.teamOwnerIndex
+                    spawnEnemy(minion)
+                    let minionLocal = center - player.position
+                    let minionScreen = hexLayout.hexToScreen(minionLocal)
+                    let worldPos = CGPoint(x: minionScreen.x + entityLayer.position.x,
+                                          y: minionScreen.y + entityLayer.position.y)
+                    showStatusText("Summoned!", at: worldPos, color: SKColor(red: 0.15, green: 0.55, blue: 0.4, alpha: 1.0))
+                }
+
+            case .healAlly(let amount, let range):
+                let allies = activeEnemies.filter { ally in
+                    ally.id != enemy.id && ally.isAlive && ally.hp < ally.maxHP &&
+                    enemy.position.distance(to: ally.position) <= range
+                }
+                if let target = allies.min(by: { $0.hp < $1.hp }) {
+                    target.heal(amount)
+                    let screenPos = worldToScreen(target.position)
+                    showHealingNumber(amount, at: screenPos)
+                }
+
+            case .stunned, .wait:
+                break
+            }
+        }
+
+        checkAndMergeEnemies()
+
+        // Log the enemy round for all non-downed players so their next turn overlay shows something
+        for i in 0..<teamMembers.count where !teamMembers[i].isDowned {
+            appendTeamLog(for: i, "⚔️ Enemies took their turns.")
+        }
+
+        checkTeamChallengeCompletion()
+    }
+
+    private func applyTeamEnemyDamage(at hex: HexCoord, damage: Int) {
+        // Find which team member is at this hex
+        for i in 0..<teamMembers.count {
+            let memberPos = i == activeTeamIndex ? player.position : teamMembers[i].worldPosition
+            if memberPos == hex {
+                if i == activeTeamIndex {
+                    player.takeDamage(damage)
+                    let screenPos = CGPoint(x: size.width / 2, y: size.height / 2)
+                    showDamageNumber(damage, at: screenPos)
+                    showSpellFlash(color: .red, at: screenPos)
+                    appendTeamLog(for: i, "Took \(damage) damage from an enemy.")
+                    if !player.isAlive {
+                        downTeamPlayer(i)
+                    }
+                } else {
+                    teamMembers[i].hp = max(0, teamMembers[i].hp - damage)
+                    appendTeamLog(for: i, "Took \(damage) damage from an enemy.")
+                    if teamMembers[i].hp <= 0 {
+                        downTeamPlayer(i)
+                    }
+                    updateTeamStatusLabel()
+                }
+                return
+            }
+        }
+        // No team member at that hex — no damage to apply
+    }
+
+    private func downTeamPlayer(_ index: Int) {
+        teamMembers[index].isDowned = true
+        appendTeamLog(for: index, "⚠️ You were downed! Need healing to recover.")
+
+        if index == activeTeamIndex {
+            // Show downed indicator on active player sprite
+            playerSprite.alpha = 0.4
+            playerSprite.strokeColor = SKColor(white: 0.4, alpha: 1.0)
+            showStatusText("Downed!", at: CGPoint(x: size.width / 2, y: size.height / 2), color: .red)
+        } else {
+            // Dim non-active sprite
+            teamMembers[index].sprite?.alpha = 0.25
+        }
+
+        updateTeamStatusLabel()
+
+        // Check if all players are downed
+        if teamMembers.allSatisfy({ $0.isDowned }) {
+            showGameOver()
+        }
+    }
+
+    /// Attempt to revive a downed team member at the given world hex
+    /// Returns true and the heal amount if a downed member was revived
+    @discardableResult
+    private func reviveDownedTeamMember(at hex: HexCoord, healing: Int) -> Bool {
+        for i in 0..<teamMembers.count {
+            let memberPos = i == activeTeamIndex ? player.position : teamMembers[i].worldPosition
+            guard memberPos == hex, teamMembers[i].isDowned else { continue }
+
+            let reviveHP = max(1, healing)
+            teamMembers[i].isDowned = false
+            teamMembers[i].hp = reviveHP
+            // Clear stale "downed" message so it doesn't show alongside the revival notice
+            teamTurnLog[i] = []
+            appendTeamLog(for: i, "Revived with \(reviveHP) HP!")
+
+            if i == activeTeamIndex {
+                player.setHP(reviveHP)
+                playerSprite.alpha = 1.0
+                playerSprite.strokeColor = .white
+            } else {
+                teamMembers[i].sprite?.alpha = 0.7
+            }
+
+            let screenPos: CGPoint
+            if i == activeTeamIndex {
+                screenPos = CGPoint(x: size.width / 2, y: size.height / 2)
+            } else {
+                let localCoord = teamMembers[i].worldPosition - player.position
+                screenPos = hexLayout.hexToScreen(localCoord)
+            }
+            showStatusText("Revived!", at: screenPos, color: .green)
+            updateTeamStatusLabel()
+            return true
+        }
+        return false
+    }
+
+    /// Heal a living (non-downed) non-active team member at the given world hex.
+    /// Returns true if a team member was healed.
+    @discardableResult
+    private func healLivingTeamMember(at hex: HexCoord, healing: Int) -> Bool {
+        for i in 0..<teamMembers.count where i != activeTeamIndex {
+            let memberPos = teamMembers[i].worldPosition
+            guard memberPos == hex, !teamMembers[i].isDowned else { continue }
+
+            let newHP = min(teamMembers[i].hp + healing, Player.maxHP)
+            let healed = newHP - teamMembers[i].hp
+            teamMembers[i].hp = newHP
+            appendTeamLog(for: i, "P\(activeTeamIndex + 1) healed you for \(healed) HP!")
+
+            teamMembers[i].sprite?.alpha = 0.7
+            updateTeamStatusLabel()
+            return true
+        }
+        return false
     }
 
     // MARK: - Rainbow Mode
@@ -816,6 +1661,26 @@ class GameScene: SKScene {
         }
     }
 
+    /// Sync stun indicator nodes on all active enemy sprites.
+    /// Call after loading team player state or applying stun so all players see paralysis.
+    private func refreshEnemyStunVisuals() {
+        for enemy in activeEnemies where enemy.isAlive {
+            guard let sprite = enemySprites[enemy.id] else { continue }
+            // Remove any existing stun indicator
+            sprite.childNode(withName: "stunIndicator")?.removeFromParent()
+            if enemy.isStunned {
+                let indicator = SKLabelNode(fontNamed: "Cochin-Bold")
+                indicator.name = "stunIndicator"
+                indicator.text = "⚡"
+                indicator.fontSize = 10
+                indicator.verticalAlignmentMode = .center
+                indicator.position = CGPoint(x: hexSize * 0.3, y: hexSize * 0.3)
+                indicator.zPosition = 6
+                sprite.addChild(indicator)
+            }
+        }
+    }
+
     private func handleEnemyDeath(_ enemy: Enemy) {
         guard let sprite = enemySprites[enemy.id] else { return }
 
@@ -831,6 +1696,11 @@ class GameScene: SKScene {
         enemySprites.removeValue(forKey: enemy.id)
         activeEnemies.removeAll { $0.id == enemy.id }
         entities.removeAll { ($0 as? Enemy)?.id == enemy.id }
+
+        // In team mode, log cross-player kills so the other player sees activity
+        if isTeam && enemy.teamOwnerIndex != activeTeamIndex && !teamMembers[enemy.teamOwnerIndex].isDowned {
+            appendTeamLog(for: enemy.teamOwnerIndex, "P\(activeTeamIndex + 1) eliminated an enemy from your challenge!")
+        }
 
         // Check if all enemies defeated
         checkChallengeCompletion()
@@ -1109,6 +1979,21 @@ class GameScene: SKScene {
 
         let sceneLocation = touch.location(in: self)
 
+        // If team turn overlay is showing, tap dismisses it
+        if isTeam && teamTurnOverlay != nil {
+            dismissTeamTurnOverlay()
+            return
+        }
+
+        // Check if touch is on End Turn button (team mode)
+        if isTeam, let btn = endTurnButton {
+            let btnLocation = touch.location(in: btn)
+            if CGRect(x: -60, y: -22, width: 120, height: 44).contains(btnLocation) {
+                handleEndTurn()
+                return
+            }
+        }
+
         // Check if touch is on back button
         if let back = backButton {
             let backLocation = touch.location(in: back)
@@ -1212,6 +2097,9 @@ class GameScene: SKScene {
             return
         }
 
+        // In team mode, block all actions after the player has already acted this turn
+        if isTeam && isActingThisTurn { return }
+
         if let spell = selectedSpell {
             // Easy/Rainbow mode: AoE spells cannot target the player's own hex
             if (GameManager.shared.gameMode == .easy || isRainbow) && spell.isAoE && coord == player.position {
@@ -1223,15 +2111,22 @@ class GameScene: SKScene {
 
             switch result {
             case .success(let effect):
+                isActingThisTurn = isTeam
                 // Apply actual game effects based on spell type
                 applySpellEffect(spell: spell, at: coord, effect: effect)
                 showSpellEffect(spell: spell, at: coord, effect: effect)
 
-                // Deselect after casting (unless it's a passive)
-                if !spell.isPassive {
+                // In team mode, always deselect (passive spells still end your turn)
+                if !spell.isPassive || isTeam {
                     selectSpell(nil)
                     spellBar?.deselectAll()
                     selectedPotion = nil
+                }
+                // In team mode, passive spells must explicitly advance the turn
+                if isTeam && spell.isPassive {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                        self?.markActivePlayerActed()
+                    }
                 }
 
             case .failure(let error):
@@ -1240,13 +2135,26 @@ class GameScene: SKScene {
         } else {
             // Move to this hex (check if not blocked by enemy)
             let enemyPositions = Set(activeEnemies.filter { $0.isAlive }.map { $0.position })
-            let allBlocked = blockedHexes.union(enemyPositions)
+            var allBlocked = blockedHexes.union(enemyPositions)
+            if isTeam {
+                // Prevent walking into a living teammate's hex
+                let teammatePositions = Set(teamMembers.enumerated().compactMap { idx, m -> HexCoord? in
+                    guard idx != activeTeamIndex, !m.isDowned else { return nil }
+                    return m.worldPosition
+                })
+                allBlocked = allBlocked.union(teammatePositions)
+            }
 
+            isActingThisTurn = isTeam  // Lock out further actions immediately
             player.moveTo(coord, blocked: allBlocked) { [weak self] in
                 guard let self = self else { return }
                 // Check if player reached any targets
                 self.checkInteractionsAtPosition(coord)
                 self.checkChallengeCompletion()
+                // In team mode, movement counts as the player's action
+                if self.isTeam {
+                    self.markActivePlayerActed()
+                }
             }
         }
     }
@@ -1318,17 +2226,46 @@ class GameScene: SKScene {
                 let playerScreenPos = CGPoint(x: size.width / 2, y: size.height / 2)
                 showHealingNumber(healing, at: playerScreenPos)
             } else if !spell.isOffensive {
-                // Pure healing spell - check for NPCs at target location first
-                if let healAmount = healNPCAt(coord, amount: spell.rollDefense()) {
-                    let screenPos = worldToScreen(coord)
-                    showHealingNumber(healAmount, at: screenPos)
-                    showStatusText("Healed!", at: screenPos, color: .green)
+                if spell.isAoE && isTeam {
+                    // AoE healing in team mode: heal all teammates/self in radius
+                    let radius = max(1, spell.range / 2)
+                    for hex in coord.hexesInRange(radius) {
+                        let roll = spell.rollDefense()
+                        if reviveDownedTeamMember(at: hex, healing: roll) {
+                            showHealingNumber(roll, at: worldToScreen(hex))
+                        } else if healLivingTeamMember(at: hex, healing: roll) {
+                            showHealingNumber(roll, at: worldToScreen(hex))
+                        } else if hex == player.position {
+                            player.heal(roll)
+                            showHealingNumber(roll, at: worldToScreen(hex))
+                        }
+                    }
                 } else {
-                    // No NPC - heal player
-                    if case .healing(let amount) = effect {
-                        player.heal(amount)
-                        let playerScreenPos = CGPoint(x: size.width / 2, y: size.height / 2)
-                        showHealingNumber(amount, at: playerScreenPos)
+                    let healRoll = spell.rollDefense()
+                    // In team mode: check downed teammates first, then living teammates, then self
+                    if isTeam && reviveDownedTeamMember(at: coord, healing: healRoll) {
+                        let screenPos = worldToScreen(coord)
+                        showHealingNumber(healRoll, at: screenPos)
+                    } else if isTeam && healLivingTeamMember(at: coord, healing: healRoll) {
+                        let screenPos = worldToScreen(coord)
+                        showHealingNumber(healRoll, at: screenPos)
+                    } else if isTeam && coord == player.position {
+                        // Caster healing themselves
+                        player.heal(healRoll)
+                        let screenPos = worldToScreen(coord)
+                        showHealingNumber(healRoll, at: screenPos)
+                    } else if let healAmount = healNPCAt(coord, amount: healRoll) {
+                        // Pure healing spell - check for NPCs at target location
+                        let screenPos = worldToScreen(coord)
+                        showHealingNumber(healAmount, at: screenPos)
+                        showStatusText("Healed!", at: screenPos, color: .green)
+                    } else if !isTeam {
+                        // Non-team mode: heal the caster when no other target is found
+                        if case .healing(let amount) = effect {
+                            player.heal(amount)
+                            let playerScreenPos = CGPoint(x: size.width / 2, y: size.height / 2)
+                            showHealingNumber(amount, at: playerScreenPos)
+                        }
                     }
                 }
             }
@@ -1351,6 +2288,7 @@ class GameScene: SKScene {
                 let screenPos = worldToScreen(coord)
                 showStatusText("Stunned!", at: screenPos, color: .yellow)
             }
+            refreshEnemyStunVisuals()
         }
 
         // Handle illumination spells (dispel darkness)
@@ -1455,7 +2393,7 @@ class GameScene: SKScene {
                     // Reveal enemies that were hidden in this darkness zone
                     for enemy in activeEnemies where enemy.isAlive {
                         if enemy.position.distance(to: element.position) <= radius {
-                            let wasHidden = enemySprites[enemy.id]?.alpha ?? 1.0 < 1.0
+                            let wasHidden = (enemySprites[enemy.id]?.alpha ?? 1.0) < 1.0
                             updateEnemyDarknessVisibility(enemy)
                             if wasHidden {
                                 let screenPos = worldToScreen(enemy.position)
@@ -1592,8 +2530,12 @@ class GameScene: SKScene {
             showSpellIconAnimation(spell: spell, at: worldScreenPos)
         }
 
-        // Trigger enemy turns after casting a non-passive spell
-        if !spell.isPassive {
+        // Trigger enemy turns after casting any spell (including passives like Blur)
+        if isTeam {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.markActivePlayerActed()
+            }
+        } else {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
                 self?.processEnemyTurns()
             }
@@ -1870,6 +2812,8 @@ class GameScene: SKScene {
     private func checkChallengeCompletion() {
         // Rainbow mode handles zone completion in rainbowAfterPlayerAction
         guard !isRainbow else { return }
+        // Team mode handles completion per-player via checkTeamChallengeCompletion
+        if isTeam { checkTeamChallengeCompletion(); return }
         guard let challenge = currentChallenge, !challengeCompleted else { return }
 
         var isComplete = false
@@ -2289,9 +3233,11 @@ class GameScene: SKScene {
         // Track when player stops moving to trigger enemy turns
         if playerWasMoving && !player.isMoving {
             playerWasMoving = false
-            // Give enemies a turn after player moves
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
-                self?.processEnemyTurns()
+            // In team mode, movement doesn't trigger enemy turns (only spell casts do)
+            if !isTeam {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                    self?.processEnemyTurns()
+                }
             }
         }
         if player.isMoving {

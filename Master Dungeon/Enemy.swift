@@ -33,6 +33,9 @@ class Enemy: EnemyBase {
     private(set) var isMerged: Bool = false
     private(set) var mergeCount: Int = 1
 
+    // Team mode: which player's challenge owns this enemy (used to filter enemy turns)
+    var teamOwnerIndex: Int = 0
+
     // Combat flags
     var isInvulnerable: Bool = false
 

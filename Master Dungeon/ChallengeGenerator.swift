@@ -191,6 +191,14 @@ class ChallengeGenerator {
     // MARK: - Challenge Type Selection
 
     private func selectVariedChallengeType(for analysis: LoadoutAnalysis) -> ChallengeType {
+        // Team mode: combat or puzzle (puzzle has its own area-filtered completion logic)
+        if GameManager.shared.gameMode == .team {
+            if analysis.hasIllumination && randomSource.nextBool() {
+                return .puzzle
+            }
+            return .combat
+        }
+
         var weights: [ChallengeType: Int] = [:]
         let hasDamage = analysis.capabilities.contains(.damage)
 
@@ -389,7 +397,7 @@ class ChallengeGenerator {
         var required: Set<SpellCapability> = []
 
         if analysis.hasIllumination {
-            descriptions.append("Darkness shrouds the area. Bring light to reveal the path!")
+            descriptions.append("Bring light to dispel the darkness!")
             required.insert(.illumination)
         }
         if analysis.hasInformation {

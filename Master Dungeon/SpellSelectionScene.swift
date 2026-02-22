@@ -11,6 +11,7 @@ class SpellSelectionScene: SKScene {
 
     // MARK: - Properties
     private var loadout = SpellLoadout()
+    private var teamPlayerIndex: Int = 0
     private var spellCards: [SpellCard] = []
     private var selectedCards: Set<String> = []
 
@@ -36,6 +37,18 @@ class SpellSelectionScene: SKScene {
     private var headerHeight: CGFloat = 130
     private var footerHeight: CGFloat = 100
     private var backButton: SKNode?
+
+    // Team mode cantrip section
+    private var teamStarterSpell: Spell? = nil
+    private static let teamStarterIDs: [String] = ["hold-person", "shillelagh", "spare-the-dying"]
+    private var teamStarterCards: [SpellCard] = []
+
+    // MARK: - Team Mode Init
+
+    convenience init(size: CGSize, teamPlayerIndex: Int) {
+        self.init(size: size)
+        self.teamPlayerIndex = teamPlayerIndex
+    }
 
     // MARK: - Scene Lifecycle
 
@@ -89,7 +102,12 @@ class SpellSelectionScene: SKScene {
 
         // Title
         let titleLabel = SKLabelNode(fontNamed: "Cochin-Bold")
-        titleLabel.text = "Choose Your Spells"
+        let mode = GameManager.shared.gameMode
+        if mode == .team {
+            titleLabel.text = "Player \(teamPlayerIndex + 1): Choose Spells"
+        } else {
+            titleLabel.text = "Choose Your Spells"
+        }
         titleLabel.fontSize = 24
         titleLabel.fontColor = .white
         titleLabel.position = CGPoint(x: size.width / 2, y: size.height - safeTop - 35)
@@ -98,10 +116,11 @@ class SpellSelectionScene: SKScene {
 
         // Subtitle
         let subtitleLabel = SKLabelNode(fontNamed: "Cochin")
-        let mode = GameManager.shared.gameMode
         switch mode {
         case .easy, .blitz:
             subtitleLabel.text = "Select up to 3 spells"
+        case .team:
+            subtitleLabel.text = "Select 3 spells + 1 cantrip"
         case .medium:
             subtitleLabel.text = "Select up to 3 spells (Potion is always available)"
         default:
@@ -172,7 +191,9 @@ class SpellSelectionScene: SKScene {
         addChild(startButton)
 
         startButtonLabel = SKLabelNode(fontNamed: "Cochin-Bold")
-        startButtonLabel.text = "Start Adventure"
+        let isTeamAndNotLast = GameManager.shared.gameMode == .team
+            && teamPlayerIndex < GameManager.shared.teamPlayerCount - 1
+        startButtonLabel.text = isTeamAndNotLast ? "Next Player →" : "Start Adventure"
         startButtonLabel.fontSize = 18
         startButtonLabel.fontColor = .white
         startButtonLabel.verticalAlignmentMode = .center
@@ -204,6 +225,13 @@ class SpellSelectionScene: SKScene {
 
     private func setupSpellGrid() {
         let gameMode = GameManager.shared.gameMode
+
+        // Team mode uses a two-section layout (cantrips + main spells)
+        if gameMode == .team {
+            setupTeamSpellGrid()
+            return
+        }
+
         var spells: [Spell]
 
         if gameMode == .easy {
@@ -270,12 +298,95 @@ class SpellSelectionScene: SKScene {
         updateStartButton()
     }
 
+    private func setupTeamSpellGrid() {
+        let starterIDs = Set(SpellSelectionScene.teamStarterIDs)
+        let starterSpells = SpellData.teamSpells.filter { starterIDs.contains($0.id) }
+        let mainSpells = SpellData.teamSpells.filter { !starterIDs.contains($0.id) }
+            .sorted { $0.manaCost < $1.manaCost }
+
+        let scrollAreaH = size.height - headerHeight - footerHeight
+        let hdrFont: CGFloat = 13
+        let gap: CGFloat = 8
+
+        // Starter card dimensions: 3 across, same height as main cards for full text
+        let starterCardW = (size.width - 40 - 2 * cardSpacing) / 3
+        let starterCardH = cardHeight
+        let starterStartX = 20 + starterCardW / 2
+
+        // Cursor starts from top of scroll area
+        var cursorY = scrollAreaH - cardSpacing
+
+        // ── Cantrip section header ──
+        let cantripHdr = SKLabelNode(fontNamed: "Cochin-Bold")
+        cantripHdr.text = "Choose 1 Cantrip:"
+        cantripHdr.fontSize = hdrFont
+        cantripHdr.fontColor = SKColor(white: 0.65, alpha: 1.0)
+        cantripHdr.horizontalAlignmentMode = .left
+        cantripHdr.verticalAlignmentMode = .top
+        cantripHdr.position = CGPoint(x: 20, y: cursorY)
+        contentNode.addChild(cantripHdr)
+        cursorY -= hdrFont + gap
+
+        // ── Starter cards (3 in one row) ──
+        let starterCenterY = cursorY - starterCardH / 2
+        for (col, spell) in starterSpells.enumerated() {
+            let x = starterStartX + CGFloat(col) * (starterCardW + cardSpacing)
+            let card = SpellCard(spell: spell, size: CGSize(width: starterCardW, height: starterCardH), fontScaleWidth: cardWidth)
+            card.position = CGPoint(x: x, y: starterCenterY)
+            contentNode.addChild(card)
+            spellCards.append(card)
+            teamStarterCards.append(card)
+        }
+        cursorY = starterCenterY - starterCardH / 2 - 14
+
+        // ── Separator ──
+        let sep = SKShapeNode(rectOf: CGSize(width: size.width - 40, height: 1))
+        sep.fillColor = SKColor(white: 0.3, alpha: 1.0)
+        sep.strokeColor = .clear
+        sep.position = CGPoint(x: size.width / 2, y: cursorY)
+        contentNode.addChild(sep)
+        cursorY -= 14
+
+        // ── Main spells section header ──
+        let mainHdr = SKLabelNode(fontNamed: "Cochin-Bold")
+        mainHdr.text = "Choose 3 Spells:"
+        mainHdr.fontSize = hdrFont
+        mainHdr.fontColor = SKColor(white: 0.65, alpha: 1.0)
+        mainHdr.horizontalAlignmentMode = .left
+        mainHdr.verticalAlignmentMode = .top
+        mainHdr.position = CGPoint(x: 20, y: cursorY)
+        contentNode.addChild(mainHdr)
+        cursorY -= hdrFont + gap
+
+        // ── Main spell cards (2-column grid) ──
+        let totalW = CGFloat(cardsPerRow) * cardWidth + CGFloat(cardsPerRow - 1) * cardSpacing
+        let mainStartX = (size.width - totalW) / 2 + cardWidth / 2
+
+        for (index, spell) in mainSpells.enumerated() {
+            let row = index / cardsPerRow
+            let col = index % cardsPerRow
+            let x = mainStartX + CGFloat(col) * (cardWidth + cardSpacing)
+            let y = cursorY - cardHeight / 2 - CGFloat(row) * (cardHeight + cardSpacing)
+            let card = SpellCard(spell: spell, size: CGSize(width: cardWidth, height: cardHeight))
+            card.position = CGPoint(x: x, y: y)
+            contentNode.addChild(card)
+            spellCards.append(card)
+        }
+
+        let mainRowCount = (mainSpells.count + cardsPerRow - 1) / cardsPerRow
+        let bottomY = cursorY - cardHeight / 2 - CGFloat(mainRowCount - 1) * (cardHeight + cardSpacing) - cardHeight / 2
+        maxScroll = max(0, -bottomY + cardSpacing)
+
+        updateManaLabel()
+        updateSelectedLabel()
+        updateStartButton()
+    }
+
     // MARK: - UI Updates
 
     private func updateManaLabel() {
-        manaLabel.text = "Spells: \(loadout.selectableSpellCount)/\(SpellLoadout.maxSpells)"
-
-        if loadout.selectableSpellCount >= SpellLoadout.maxSpells {
+        manaLabel.text = "Spells: \(loadout.selectableSpellCount)/3"
+        if loadout.selectableSpellCount >= 3 {
             manaLabel.fontColor = SKColor(red: 1.0, green: 0.5, blue: 0.3, alpha: 1.0)
         } else {
             manaLabel.fontColor = SKColor(red: 0.3, green: 0.5, blue: 1.0, alpha: 1.0)
@@ -283,12 +394,23 @@ class SpellSelectionScene: SKScene {
     }
 
     private func updateSelectedLabel() {
-        let count = loadout.spells.count
-        selectedLabel.text = "\(count) \(count == 1 ? "spell" : "spells") selected"
+        if GameManager.shared.gameMode == .team {
+            let n = loadout.selectableSpellCount
+            let cantrip = teamStarterSpell != nil ? "✓" : "–"
+            selectedLabel.text = "\(n)/3 spells · cantrip \(cantrip)"
+        } else {
+            let count = loadout.spells.count
+            selectedLabel.text = "\(count) \(count == 1 ? "spell" : "spells") selected"
+        }
     }
 
     private func updateStartButton() {
-        let canStart = !loadout.spells.isEmpty
+        let canStart: Bool
+        if GameManager.shared.gameMode == .team {
+            canStart = loadout.selectableSpellCount == 3 && teamStarterSpell != nil
+        } else {
+            canStart = !loadout.spells.isEmpty
+        }
         startButton.alpha = canStart ? 1.0 : 0.5
         startButtonLabel.alpha = canStart ? 1.0 : 0.5
     }
@@ -388,7 +510,26 @@ class SpellSelectionScene: SKScene {
         let spell = card.spell
 
         // Pass/Potion cannot be toggled off
-        if spell.id == "pass" || spell.id == "potion" {
+        if spell.id == "pass" || spell.id == "potion" { return }
+
+        // Team mode: cantrip section uses radio-button selection (pick exactly 1)
+        if GameManager.shared.gameMode == .team &&
+           SpellSelectionScene.teamStarterIDs.contains(spell.id) {
+            // Deselect the previous cantrip (if any)
+            if let prev = teamStarterSpell {
+                selectedCards.remove(prev.id)
+                teamStarterCards.first(where: { $0.spell.id == prev.id })?.setSelected(false)
+            }
+            if teamStarterSpell?.id == spell.id {
+                teamStarterSpell = nil  // Tapping same card deselects it
+            } else {
+                teamStarterSpell = spell
+                selectedCards.insert(spell.id)
+                card.setSelected(true)
+            }
+            updateManaLabel()
+            updateSelectedLabel()
+            updateStartButton()
             return
         }
 
@@ -415,6 +556,8 @@ class SpellSelectionScene: SKScene {
         // Update affordability for all cards
         for otherCard in spellCards {
             if !selectedCards.contains(otherCard.spell.id) && otherCard.spell.id != "pass" && otherCard.spell.id != "potion" {
+                // Cantrip cards are never grayed out — they use radio-button selection independent of spell count
+                if SpellSelectionScene.teamStarterIDs.contains(otherCard.spell.id) { continue }
                 otherCard.setAffordable(loadout.canAfford(otherCard.spell))
             }
         }
@@ -428,15 +571,38 @@ class SpellSelectionScene: SKScene {
     }
 
     private func startGame() {
-        // Store loadout in game manager
-        GameManager.shared.currentLoadout = loadout
+        if GameManager.shared.gameMode == .team {
+            // Append the selected cantrip to the loadout
+            if let cantrip = teamStarterSpell {
+                loadout.addSpellUnlimited(cantrip)
+            }
+            // Store this player's loadout
+            GameManager.shared.playerLoadouts[teamPlayerIndex] = loadout
 
-        // Transition to game scene
-        let gameScene = GameScene(size: size)
-        gameScene.scaleMode = scaleMode
+            let nextIndex = teamPlayerIndex + 1
+            if nextIndex < GameManager.shared.teamPlayerCount {
+                // More players need to select — chain to next SpellSelectionScene
+                let nextScene = SpellSelectionScene(size: size, teamPlayerIndex: nextIndex)
+                nextScene.scaleMode = scaleMode
+                let transition = SKTransition.fade(withDuration: 0.5)
+                view?.presentScene(nextScene, transition: transition)
+            } else {
+                // All players done — start the game
+                let gameScene = GameScene(size: size)
+                gameScene.scaleMode = scaleMode
+                let transition = SKTransition.fade(withDuration: 0.5)
+                view?.presentScene(gameScene, transition: transition)
+            }
+        } else {
+            // Non-team: store loadout in game manager and start
+            GameManager.shared.currentLoadout = loadout
 
-        let transition = SKTransition.fade(withDuration: 0.5)
-        view?.presentScene(gameScene, transition: transition)
+            let gameScene = GameScene(size: size)
+            gameScene.scaleMode = scaleMode
+
+            let transition = SKTransition.fade(withDuration: 0.5)
+            view?.presentScene(gameScene, transition: transition)
+        }
     }
 
 }
@@ -459,12 +625,13 @@ class SpellCard: SKNode {
     private var isAffordable: Bool = true
     private var isLocked: Bool = false
 
-    init(spell: Spell, size: CGSize) {
+    init(spell: Spell, size: CGSize, fontScaleWidth: CGFloat? = nil) {
         self.spell = spell
         self.cardSize = size
 
         // Scale factor based on card width (base reference: 150pt card)
-        let scale = size.width / 150.0
+        // fontScaleWidth lets cantrip cards use the main-card scale so text stays full-size
+        let scale = (fontScaleWidth ?? size.width) / 150.0
 
         // Background
         background = SKShapeNode(rectOf: size, cornerRadius: 10)

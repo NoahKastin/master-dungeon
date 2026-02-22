@@ -14,6 +14,7 @@ enum GameMode {
     case hardcore
     case blitz
     case rainbow
+    case team
 
     var hasMana: Bool {
         switch self {
@@ -54,7 +55,11 @@ class GameManager {
     var totalDamageDealt: Int = 0
     var totalHealing: Int = 0
 
-    // Multiplayer loadouts (for future P2P)
+    // Team mode state
+    var teamPlayerCount: Int = 2
+    var activePlayerIndex: Int = 0
+
+    // Multiplayer loadouts
     var playerLoadouts: [Int: SpellLoadout] = [:]
 
     func reset() {
@@ -64,6 +69,8 @@ class GameManager {
         totalDamageDealt = 0
         totalHealing = 0
         playerLoadouts.removeAll()
+        teamPlayerCount = 2
+        activePlayerIndex = 0
     }
 
     func recordDamage(_ amount: Int) {

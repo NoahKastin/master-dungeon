@@ -152,17 +152,15 @@ class MainMenuScene: SKScene {
         teamButton.lineWidth = 2
         teamButton.position = CGPoint(x: rightX, y: buttonTopY - buttonSpacing)
         teamButton.zPosition = 10
-        teamButton.alpha = 0.4
         addChild(teamButton)
 
         let teamLabel = SKLabelNode(fontNamed: "Cochin-Bold")
-        teamLabel.text = "Team \u{1F512}"
+        teamLabel.text = "Team"
         teamLabel.fontSize = 18
         teamLabel.fontColor = .white
         teamLabel.verticalAlignmentMode = .center
         teamLabel.position = teamButton.position
         teamLabel.zPosition = 11
-        teamLabel.alpha = 0.4
         addChild(teamLabel)
 
         // "Blitz" button (mint)
@@ -208,8 +206,18 @@ class MainMenuScene: SKScene {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
 
-        // If overlay is showing, any tap dismisses it
+        // If overlay is showing, check for player count picker buttons first
         if helpOverlay != nil {
+            let nodes = self.nodes(at: location)
+            for node in nodes {
+                if let name = node.name, name.hasPrefix("count_"),
+                   let countStr = name.components(separatedBy: "_").last,
+                   let count = Int(countStr) {
+                    hideHelp()
+                    startTeamMode(playerCount: count)
+                    return
+                }
+            }
             hideHelp()
             return
         }
@@ -220,7 +228,7 @@ class MainMenuScene: SKScene {
         let halfWidth: CGFloat = 70
         let halfHeight: CGFloat = 25
 
-        let buttons = [easyButton!, mediumButton!, hardButton!, extremeButton!, blitzButton!, rainbowButton!, howToPlayButton!]
+        let buttons = [easyButton!, mediumButton!, hardButton!, extremeButton!, blitzButton!, rainbowButton!, teamButton!, howToPlayButton!]
         for button in buttons {
             let bounds = CGRect(
                 x: button.position.x - halfWidth,
@@ -262,6 +270,8 @@ class MainMenuScene: SKScene {
                 showModeDescription("Beat the clock!")
             } else if button === rainbowButton {
                 showModeDescription("Drink potions, outrun lava!")
+            } else if button === teamButton {
+                showModeDescription("Team up! Pass-and-play co-op.")
             }
         } else {
             // Short tap — start mode or show help
@@ -277,6 +287,8 @@ class MainMenuScene: SKScene {
                 startBlitzMode()
             } else if button === rainbowButton {
                 startRainbowMode()
+            } else if button === teamButton {
+                showPlayerCountPicker()
             } else if button === howToPlayButton {
                 showHelp()
             }
@@ -336,6 +348,96 @@ class MainMenuScene: SKScene {
         spellScene.scaleMode = scaleMode
         let transition = SKTransition.fade(withDuration: 0.5)
         view?.presentScene(spellScene, transition: transition)
+    }
+
+    private func startTeamMode(playerCount: Int) {
+        GameManager.shared.gameMode = .team
+        GameManager.shared.teamPlayerCount = playerCount
+        GameManager.shared.activePlayerIndex = 0
+        GameManager.shared.playerLoadouts.removeAll()
+        GameManager.shared.challengesCompleted = 0
+        let spellScene = SpellSelectionScene(size: size, teamPlayerIndex: 0)
+        spellScene.scaleMode = scaleMode
+        let transition = SKTransition.fade(withDuration: 0.5)
+        view?.presentScene(spellScene, transition: transition)
+    }
+
+    // MARK: - Player Count Picker
+
+    private func showPlayerCountPicker() {
+        guard helpOverlay == nil else { return }
+
+        let overlay = SKNode()
+        overlay.zPosition = 500
+
+        let dimmer = SKShapeNode(rectOf: CGSize(width: size.width, height: size.height))
+        dimmer.fillColor = SKColor(white: 0, alpha: 0.85)
+        dimmer.strokeColor = .clear
+        dimmer.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        overlay.addChild(dimmer)
+
+        let panelWidth: CGFloat = min(size.width - 60, 300)
+        let panelHeight: CGFloat = 180
+        let panel = SKShapeNode(rectOf: CGSize(width: panelWidth, height: panelHeight), cornerRadius: 16)
+        panel.fillColor = SKColor(white: 0.15, alpha: 1.0)
+        panel.strokeColor = SKColor(red: 0.6, green: 0.3, blue: 0.9, alpha: 1.0)
+        panel.lineWidth = 2
+        panel.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        overlay.addChild(panel)
+
+        let title = SKLabelNode(fontNamed: "Cochin-Bold")
+        title.text = "How many players?"
+        title.fontSize = 18
+        title.fontColor = .white
+        title.verticalAlignmentMode = .center
+        title.position = CGPoint(x: size.width / 2, y: size.height / 2 + 60)
+        overlay.addChild(title)
+
+        let buttonColors: [SKColor] = [
+            SKColor(red: 0.3, green: 0.6, blue: 1.0, alpha: 1.0),
+            SKColor(red: 0.3, green: 0.8, blue: 0.3, alpha: 1.0),
+            SKColor(red: 1.0, green: 0.8, blue: 0.2, alpha: 1.0),
+        ]
+        let counts = [2, 3, 4]
+        let btnW: CGFloat = 70
+        let btnH: CGFloat = 50
+        let spacing: CGFloat = 80
+        let startX = size.width / 2 - spacing
+
+        for (i, count) in counts.enumerated() {
+            let btn = SKShapeNode(rectOf: CGSize(width: btnW, height: btnH), cornerRadius: 10)
+            btn.fillColor = buttonColors[i]
+            btn.strokeColor = .white
+            btn.lineWidth = 1.5
+            btn.position = CGPoint(x: startX + CGFloat(i) * spacing, y: size.height / 2 - 10)
+            btn.name = "count_\(count)"
+            btn.zPosition = 1
+            overlay.addChild(btn)
+
+            let lbl = SKLabelNode(fontNamed: "Cochin-Bold")
+            lbl.text = "\(count)"
+            lbl.fontSize = 22
+            lbl.fontColor = .white
+            lbl.verticalAlignmentMode = .center
+            lbl.position = btn.position
+            lbl.name = "count_\(count)"
+            lbl.zPosition = 2
+            overlay.addChild(lbl)
+        }
+
+        let hint = SKLabelNode(fontNamed: "Cochin")
+        hint.text = "Tap anywhere else to cancel"
+        hint.fontSize = 11
+        hint.fontColor = SKColor(white: 0.5, alpha: 1.0)
+        hint.verticalAlignmentMode = .center
+        hint.position = CGPoint(x: size.width / 2, y: size.height / 2 - 70)
+        overlay.addChild(hint)
+
+        addChild(overlay)
+        helpOverlay = overlay
+
+        overlay.alpha = 0
+        overlay.run(SKAction.fadeIn(withDuration: 0.2))
     }
 
     // MARK: - Mode Description Overlay

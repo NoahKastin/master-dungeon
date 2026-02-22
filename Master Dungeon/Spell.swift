@@ -143,6 +143,12 @@ struct SpellLoadout {
         return true
     }
 
+    /// Add a spell bypassing the count limit (used for team mode cantrip slot)
+    mutating func addSpellUnlimited(_ spell: Spell) {
+        guard !spells.contains(spell) else { return }
+        spells.append(spell)
+    }
+
     mutating func removeSpell(_ spell: Spell) {
         // Pass/Potion cannot be removed
         guard !Self.lockedSpellIDs.contains(spell.id) else { return }

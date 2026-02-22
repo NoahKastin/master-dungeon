@@ -22,7 +22,7 @@ class Player: PlayerBase {
         case .easy, .rainbow: return 16
         case .medium: return 10
         case .hardcore: return 1
-        case .normal, .blitz: return 4
+        case .normal, .blitz, .team: return 4
         }
     }
     static var maxMana: Int {
@@ -106,6 +106,27 @@ class Player: PlayerBase {
     }
 
     var isAlive: Bool { hp > 0 }
+
+    // MARK: - Team Mode Helpers (used only by GameScene during turn swapping)
+
+    func setHP(_ newHP: Int) {
+        let clamped = max(0, min(Player.maxHP, newHP))
+        guard clamped != hp else { return }
+        hp = clamped
+        onHPChanged?(hp)
+    }
+
+    func setMana(_ newMana: Int) {
+        let clamped = max(0, min(Player.maxMana, newMana))
+        guard clamped != mana else { return }
+        mana = clamped
+        onManaChanged?(mana)
+    }
+
+    func teleportTo(_ coord: HexCoord) {
+        position = coord
+        onPositionChanged?(coord)
+    }
 
     // MARK: - Mana Management
 
@@ -213,11 +234,6 @@ class Player: PlayerBase {
 
         isMoving = true
         onMovementComplete = completion
-    }
-
-    func teleportTo(_ destination: HexCoord) {
-        position = destination
-        onPositionChanged?(position)
     }
 
     // MARK: - Update

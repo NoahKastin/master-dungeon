@@ -48,6 +48,7 @@ class ChallengeAI {
         switch GameManager.shared.gameMode {
         case .easy: return 1
         case .medium: return 2
+        case .team: return 3
         default: return 3
         }
     }
