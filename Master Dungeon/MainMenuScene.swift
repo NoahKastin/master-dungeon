@@ -376,11 +376,11 @@ class MainMenuScene: SKScene {
         dimmer.position = CGPoint(x: size.width / 2, y: size.height / 2)
         overlay.addChild(dimmer)
 
-        let panelWidth: CGFloat = min(size.width - 60, 300)
+        let panelWidth: CGFloat = min(size.width - 40, 340)
         let panelHeight: CGFloat = 180
         let panel = SKShapeNode(rectOf: CGSize(width: panelWidth, height: panelHeight), cornerRadius: 16)
         panel.fillColor = SKColor(white: 0.15, alpha: 1.0)
-        panel.strokeColor = SKColor(red: 0.6, green: 0.3, blue: 0.9, alpha: 1.0)
+        panel.strokeColor = SKColor(red: 0.3, green: 0.6, blue: 1.0, alpha: 1.0)  // Blue (P1)
         panel.lineWidth = 2
         panel.position = CGPoint(x: size.width / 2, y: size.height / 2)
         overlay.addChild(panel)
@@ -393,16 +393,19 @@ class MainMenuScene: SKScene {
         title.position = CGPoint(x: size.width / 2, y: size.height / 2 + 60)
         overlay.addChild(title)
 
+        // Each button color = the NEW player added at that count
         let buttonColors: [SKColor] = [
-            SKColor(red: 0.3, green: 0.6, blue: 1.0, alpha: 1.0),
-            SKColor(red: 0.3, green: 0.8, blue: 0.3, alpha: 1.0),
-            SKColor(red: 1.0, green: 0.8, blue: 0.2, alpha: 1.0),
+            SKColor(red: 0.9, green: 0.3, blue: 0.3, alpha: 1.0),  // 2: Red (P2)
+            SKColor(red: 0.3, green: 0.8, blue: 0.3, alpha: 1.0),  // 3: Green (P3)
+            SKColor(red: 1.0, green: 0.8, blue: 0.2, alpha: 1.0),  // 4: Gold (P4)
+            SKColor(red: 0.15, green: 0.55, blue: 0.4, alpha: 1.0), // 5: Teal (P5)
+            SKColor(red: 0.7, green: 0.3, blue: 0.9, alpha: 1.0),  // 6: Purple (P6)
         ]
-        let counts = [2, 3, 4]
-        let btnW: CGFloat = 70
+        let counts = [2, 3, 4, 5, 6]
+        let btnW: CGFloat = 52
         let btnH: CGFloat = 50
-        let spacing: CGFloat = 80
-        let startX = size.width / 2 - spacing
+        let spacing: CGFloat = 58
+        let startX = size.width / 2 - CGFloat(counts.count / 2) * spacing
 
         for (i, count) in counts.enumerated() {
             let btn = SKShapeNode(rectOf: CGSize(width: btnW, height: btnH), cornerRadius: 10)
@@ -545,7 +548,7 @@ class MainMenuScene: SKScene {
 
         SURVIVAL
         Green spells heal. Keep your HP up!
-        Hearts show health, crystals show mana.
+        Hearts show health, hemispheres show mana.
 
         CHALLENGES
         Complete objectives shown at the top.

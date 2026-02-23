@@ -574,7 +574,7 @@ class SpellSelectionScene: SKScene {
         if GameManager.shared.gameMode == .team {
             // Append the selected cantrip to the loadout
             if let cantrip = teamStarterSpell {
-                loadout.addSpellUnlimited(cantrip)
+                loadout.appendSpell(cantrip)
             }
             // Store this player's loadout
             GameManager.shared.playerLoadouts[teamPlayerIndex] = loadout

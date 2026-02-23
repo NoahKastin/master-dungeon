@@ -863,6 +863,19 @@ class PotionBar: SKNode {
         }
     }
 
+    func potionColorAt(point: CGPoint) -> PotionColor? {
+        for (color, slot) in slots {
+            let slotFrame = CGRect(
+                x: slot.position.x - slotSize / 2,
+                y: slot.position.y - slotSize / 2,
+                width: slotSize,
+                height: slotSize
+            )
+            if slotFrame.contains(point) { return color }
+        }
+        return nil
+    }
+
     override func contains(_ point: CGPoint) -> Bool {
         let colors = PotionColor.allCases
         let totalWidth = CGFloat(colors.count) * slotSize + CGFloat(max(0, colors.count - 1)) * slotSpacing
@@ -878,7 +891,14 @@ class PotionSlotNode: SKNode {
     private(set) var currentCount: Int = 0
 
     init(color: PotionColor, size: CGFloat) {
-        background = SKShapeNode(circleOfRadius: size / 2)
+        let r = size / 2
+        let neckW = size * 0.35
+        let neckH = size * 0.3
+        let bodyY: CGFloat = -neckH / 2  // Shift body down so neck sits on top
+
+        // Flask body (circle)
+        background = SKShapeNode(circleOfRadius: r)
+        background.position = CGPoint(x: 0, y: bodyY)
         background.fillColor = PotionSlotNode.potionSKColor(for: color)
         background.strokeColor = SKColor(white: 0.3, alpha: 1.0)
         background.lineWidth = 2
@@ -888,9 +908,13 @@ class PotionSlotNode: SKNode {
         countLabel.fontColor = .white
         countLabel.verticalAlignmentMode = .center
         countLabel.horizontalAlignmentMode = .center
+        countLabel.position = CGPoint(x: 0, y: bodyY)
         countLabel.text = "0"
 
-        selectionBorder = SKShapeNode(circleOfRadius: size / 2 + 3)
+        // Selection border encompasses flask
+        let borderRect = CGSize(width: size + 6, height: size + neckH + 6)
+        selectionBorder = SKShapeNode(rectOf: borderRect, cornerRadius: r)
+        selectionBorder.position = CGPoint(x: 0, y: bodyY / 2)
         selectionBorder.fillColor = .clear
         selectionBorder.strokeColor = SKColor(red: 1.0, green: 0.8, blue: 0.2, alpha: 1.0)
         selectionBorder.lineWidth = 3
@@ -899,16 +923,24 @@ class PotionSlotNode: SKNode {
         super.init()
 
         addChild(selectionBorder)
+
+        // Flask neck (small rect above body)
+        let neck = SKShapeNode(rectOf: CGSize(width: neckW, height: neckH), cornerRadius: 3)
+        neck.position = CGPoint(x: 0, y: bodyY + r + neckH / 2 - 2)
+        neck.fillColor = color == .rainbow ? SKColor(white: 0.8, alpha: 0.4) : PotionSlotNode.potionSKColor(for: color)
+        neck.strokeColor = SKColor(white: 0.3, alpha: 1.0)
+        neck.lineWidth = 2
+
         if color == .rainbow {
-            // Multicolored pie segments instead of solid fill
             background.fillColor = .clear
-            let rainbow = PotionSlotNode.makeRainbowCircle(radius: size / 2)
+            let rainbow = PotionSlotNode.makeRainbowCircle(radius: r)
+            rainbow.position = CGPoint(x: 0, y: bodyY)
             addChild(rainbow)
-            addChild(countLabel)
         } else {
             addChild(background)
-            addChild(countLabel)
         }
+        addChild(neck)
+        addChild(countLabel)
 
         alpha = 0.3  // Start grayed out
     }
@@ -921,6 +953,8 @@ class PotionSlotNode: SKNode {
         currentCount = count
         countLabel.text = "\(count)"
         alpha = count > 0 ? 1.0 : 0.3
+        // Dark text on bright potion colors for readability
+        countLabel.fontColor = count > 0 ? .black : .white
     }
 
     func setSelected(_ selected: Bool) {

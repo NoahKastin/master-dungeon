@@ -143,8 +143,8 @@ struct SpellLoadout {
         return true
     }
 
-    /// Add a spell bypassing the count limit (used for team mode cantrip slot)
-    mutating func addSpellUnlimited(_ spell: Spell) {
+    /// Append a spell bypassing the count limit (team cantrip slot)
+    mutating func appendSpell(_ spell: Spell) {
         guard !spells.contains(spell) else { return }
         spells.append(spell)
     }

@@ -41,7 +41,7 @@ class Enemy: EnemyBase {
 
     // AI State
     private(set) var isStunned: Bool = false
-    private var stunTurnsRemaining: Int = 0
+    private(set) var stunTurnsRemaining: Int = 0
     private var turnsSinceLastSummon: Int = 0
 
     // Callbacks

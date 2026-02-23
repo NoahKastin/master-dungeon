@@ -25,9 +25,7 @@ class Player: PlayerBase {
         case .normal, .blitz, .team: return 4
         }
     }
-    static var maxMana: Int {
-        GameManager.shared.gameMode == .medium ? 1 : 2
-    }
+    static var maxMana: Int { 2 }
 
     // MARK: - State
     private(set) var hp: Int = Player.maxHP

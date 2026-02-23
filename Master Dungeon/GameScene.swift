@@ -34,7 +34,6 @@ class GameScene: SKScene {
         case .easy: return 1
         case .medium: return 2
         case .rainbow: return RainbowConfig.visibleRange
-        case .team: return 3
         default: return 3
         }
     }
@@ -99,6 +98,8 @@ class GameScene: SKScene {
         SKColor(red: 0.9, green: 0.3, blue: 0.3, alpha: 1.0),  // Red
         SKColor(red: 0.3, green: 0.8, blue: 0.3, alpha: 1.0),  // Green
         SKColor(red: 1.0, green: 0.8, blue: 0.2, alpha: 1.0),  // Gold
+        SKColor(red: 0.15, green: 0.55, blue: 0.4, alpha: 1.0), // Teal
+        SKColor(red: 0.7, green: 0.3, blue: 0.9, alpha: 1.0),  // Purple
     ]
 
     // Challenge offsets: each player's challenge spawns at a different compass point
@@ -107,6 +108,8 @@ class GameScene: SKScene {
         HexCoord(q:  4, r:  0),  // Player 1: east
         HexCoord(q:  0, r:  4),  // Player 2: south
         HexCoord(q: -4, r:  0),  // Player 3: west
+        HexCoord(q:  3, r: -3),  // Player 4: northeast
+        HexCoord(q: -3, r:  3),  // Player 5: southwest
     ]
 
     struct TeamMemberState {
@@ -128,6 +131,7 @@ class GameScene: SKScene {
     private var teamActedThisRound: Set<Int> = []
     private var teamChallengeHadEnemies: [Int: Bool] = [:]  // Per-player enemy tracking
     private var isActingThisTurn: Bool = false               // Blocks double-actions
+    private var pendingEnemyTurn: Bool = false               // Blocks overlapping enemy turn calls
     private var teamTurnOverlay: SKNode?
     private var endTurnButton: SKNode?
     private var teamStatusLabel: SKLabelNode?
@@ -150,8 +154,9 @@ class GameScene: SKScene {
     private var movementTimer: TimeInterval = 0
     private let movementInterval: TimeInterval = 0.15
 
-    // MARK: - Long-press Spell Tooltip
+    // MARK: - Long-press Tooltip
     private var spellBarTouchPoint: CGPoint?
+    private var potionBarTouchPoint: CGPoint?
     private var longPressWork: DispatchWorkItem?
     private var spellTooltip: SKNode?
 
@@ -452,6 +457,9 @@ class GameScene: SKScene {
     // MARK: - Spell Selection
 
     private func selectSpell(_ spell: Spell?) {
+        // Block spell selection while enemy turn is pending
+        if spell != nil && pendingEnemyTurn { return }
+
         // Clear previous highlights
         clearHighlights()
 
@@ -469,9 +477,16 @@ class GameScene: SKScene {
                 applySpellEffect(spell: spell, at: player.position, effect: effect)
                 showSpellEffect(spell: spell, at: player.position, effect: effect)
 
-                // Always deselect after casting (passive spells like Blur still end input state)
                 selectedSpell = nil
                 spellBar?.deselectAll()
+
+                pendingEnemyTurn = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                    guard let self = self else { return }
+                    self.pendingEnemyTurn = false
+                    if self.isTeam { self.markActivePlayerActed() }
+                    else { self.processEnemyTurns() }
+                }
 
             case .failure(let error):
                 showCastError(error)
@@ -606,7 +621,7 @@ class GameScene: SKScene {
             let color = GameScene.teamColors[i % GameScene.teamColors.count]
             let loadout = loadouts[i] ?? SpellLoadout()
             // Stagger starting positions so players aren't on top of each other
-            let startOffsets: [HexCoord] = [.zero, HexCoord(q: 0, r: -1), HexCoord(q: 1, r: 0), HexCoord(q: -1, r: 0)]
+            let startOffsets: [HexCoord] = [.zero, HexCoord(q: 0, r: -1), HexCoord(q: 1, r: 0), HexCoord(q: -1, r: 0), HexCoord(q: 1, r: -1), HexCoord(q: -1, r: 1)]
             let startPos = startOffsets[i % startOffsets.count]
             let state = TeamMemberState(
                 index: i,
@@ -1263,6 +1278,7 @@ class GameScene: SKScene {
         }
 
         checkAndMergeEnemies()
+        refreshEnemyStunVisuals()
 
         // Log the enemy round for all non-downed players so their next turn overlay shows something
         for i in 0..<teamMembers.count where !teamMembers[i].isDowned {
@@ -1381,6 +1397,16 @@ class GameScene: SKScene {
 
     // MARK: - Rainbow Mode
 
+    private func collectPotionAtPlayer() {
+        guard let color = droppedPotions[player.position] else { return }
+        player.collectPotion(color.rawValue)
+        droppedPotions.removeValue(forKey: player.position)
+        potionSprites[player.position]?.removeFromParent()
+        potionSprites.removeValue(forKey: player.position)
+        potionBar?.updateCounts(from: player)
+        showStatusText("+1 \(color.rawValue.capitalized)", at: CGPoint(x: size.width / 2, y: size.height / 2), color: .green)
+    }
+
     private func setupRainbow() {
         lavaColumn = player.position.q - GameScene.visibleRange + 1
         nextZoneColumn = player.position.q + RainbowConfig.zoneSpacing
@@ -1406,15 +1432,7 @@ class GameScene: SKScene {
             return
         }
 
-        // Check potion collection
-        if let color = droppedPotions[player.position] {
-            player.collectPotion(color.rawValue)
-            droppedPotions.removeValue(forKey: player.position)
-            potionSprites[player.position]?.removeFromParent()
-            potionSprites.removeValue(forKey: player.position)
-            potionBar?.updateCounts(from: player)
-            showStatusText("+1 \(color.rawValue.capitalized)", at: CGPoint(x: size.width / 2, y: size.height / 2), color: .green)
-        }
+        collectPotionAtPlayer()
 
         // Check zone completion — enemies are removed from activeEnemies on death,
         // so we use rainbowZoneHadEnemies to detect the transition from "had enemies" to "all cleared"
@@ -1422,13 +1440,12 @@ class GameScene: SKScene {
             rainbowZoneHadEnemies = false
             zonesCleared += 1
             scoreLabel?.text = "Zones: \(zonesCleared)"
-            let dropPos = player.position  // Drop near player
             let color = PotionColor.random()
-            droppedPotions[dropPos] = color
-            renderPotionDrop(at: dropPos, color: color)
+            // Add potion directly to inventory (no ground rendering needed)
+            player.collectPotion(color.rawValue)
             potionBar?.updateCounts(from: player)
-            showStatusText("Zone cleared!", at: CGPoint(x: size.width / 2, y: size.height / 2 + 30), color: .yellow)
-            objectiveLabel?.text = "Collect the potion!"
+            showStatusText("Zone cleared! +1 \(color.rawValue.capitalized)", at: CGPoint(x: size.width / 2, y: size.height / 2 + 30), color: .yellow)
+            objectiveLabel?.text = "Outrun the lava!"
         }
 
         // Generate new zone if approaching
@@ -1480,13 +1497,17 @@ class GameScene: SKScene {
         enemySprites.removeAll()
         blockedHexes.removeAll()
 
-        // Generate 1-2 enemies near the zone center
-        let zoneCenter = HexCoord(q: nextZoneColumn, r: 0)
+        // Generate 1-2 enemies near the player, just ahead in the q-axis
+        let spawnQ = player.position.q + 2
+        let spawnR = player.position.r
         let enemyCount = zonesCleared < 3 ? 1 : Int.random(in: 1...2)
-        let neighbors = zoneCenter.neighbors()
+        let spawnPositions = [
+            HexCoord(q: spawnQ, r: spawnR),
+            HexCoord(q: spawnQ, r: spawnR + (Bool.random() ? -1 : 1)),
+        ]
 
         for i in 0..<enemyCount {
-            let pos = i < neighbors.count ? neighbors[i] : zoneCenter
+            let pos = spawnPositions[i]
             let hp = max(1, 1 + zonesCleared / 2)
             let enemy = Enemy(hp: hp, damage: 1, behavior: .aggressive, position: pos)
             spawnEnemy(enemy)
@@ -1499,6 +1520,9 @@ class GameScene: SKScene {
     }
 
     private func selectPotion(_ color: PotionColor?) {
+        // Block potion use while enemy turn is pending
+        if color != nil && pendingEnemyTurn { return }
+
         // Clear existing highlights
         clearHighlights()
         selectedSpell = nil
@@ -1529,26 +1553,47 @@ class GameScene: SKScene {
         potionBar?.deselectAll()
 
         // Trigger enemy turns after using a potion
+        pendingEnemyTurn = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-            self?.processEnemyTurns()
+            guard let self = self else { return }
+            self.pendingEnemyTurn = false
+            self.processEnemyTurns()
         }
     }
 
     private func renderPotionDrop(at worldPos: HexCoord, color: PotionColor) {
         let localCoord = worldPos - player.position
         let screenPos = hexLayout.hexToScreen(localCoord)
-        let radius = hexSize * 0.25
+        let r = hexSize * 0.25
+        let neckW = r * 0.7
+        let neckH = r * 0.6
+        let bodyY: CGFloat = -neckH / 2
 
-        let container: SKNode
+        let container = SKNode()
+
+        // Flask body
+        let fillColor = PotionSlotNode.potionSKColor(for: color)
         if color == .rainbow {
-            container = PotionSlotNode.makeRainbowCircle(radius: radius)
+            let rainbow = PotionSlotNode.makeRainbowCircle(radius: r)
+            rainbow.position = CGPoint(x: 0, y: bodyY)
+            container.addChild(rainbow)
         } else {
-            let circle = SKShapeNode(circleOfRadius: radius)
-            circle.fillColor = PotionSlotNode.potionSKColor(for: color)
-            circle.strokeColor = .white
-            circle.lineWidth = 1
-            container = circle
+            let body = SKShapeNode(circleOfRadius: r)
+            body.fillColor = fillColor
+            body.strokeColor = .white
+            body.lineWidth = 1
+            body.position = CGPoint(x: 0, y: bodyY)
+            container.addChild(body)
         }
+
+        // Flask neck
+        let neck = SKShapeNode(rectOf: CGSize(width: neckW, height: neckH), cornerRadius: 2)
+        neck.position = CGPoint(x: 0, y: bodyY + r + neckH / 2 - 1)
+        neck.fillColor = color == .rainbow ? SKColor(white: 0.8, alpha: 0.4) : fillColor
+        neck.strokeColor = .white
+        neck.lineWidth = 1
+        container.addChild(neck)
+
         container.zPosition = 3
         container.position = screenPos
         entityLayer.addChild(container)
@@ -1669,12 +1714,15 @@ class GameScene: SKScene {
             // Remove any existing stun indicator
             sprite.childNode(withName: "stunIndicator")?.removeFromParent()
             if enemy.isStunned {
+                let stars = String(repeating: "✦", count: min(enemy.stunTurnsRemaining, 3))
                 let indicator = SKLabelNode(fontNamed: "Cochin-Bold")
                 indicator.name = "stunIndicator"
-                indicator.text = "⚡"
-                indicator.fontSize = 10
+                indicator.text = stars
+                indicator.fontSize = hexSize * 0.22
+                indicator.fontColor = SKColor(red: 0.4, green: 0.6, blue: 1.0, alpha: 1.0)
                 indicator.verticalAlignmentMode = .center
-                indicator.position = CGPoint(x: hexSize * 0.3, y: hexSize * 0.3)
+                indicator.horizontalAlignmentMode = .center
+                indicator.position = CGPoint(x: 0, y: hexSize * 0.4)
                 indicator.zPosition = 6
                 sprite.addChild(indicator)
             }
@@ -2012,7 +2060,16 @@ class GameScene: SKScene {
         if let bar = potionBar {
             let barLocation = touch.location(in: bar)
             if bar.contains(barLocation) {
-                bar.handleTouch(at: barLocation)
+                potionBarTouchPoint = barLocation
+                let work = DispatchWorkItem { [weak self] in
+                    guard let self = self else { return }
+                    if let color = self.potionBar?.potionColorAt(point: barLocation) {
+                        self.showSpellTooltip(color.spell)
+                    }
+                    self.potionBarTouchPoint = nil
+                }
+                longPressWork = work
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4, execute: work)
                 return
             }
         }
@@ -2059,6 +2116,7 @@ class GameScene: SKScene {
         if spellTooltip != nil {
             dismissSpellTooltip()
             spellBarTouchPoint = nil
+            potionBarTouchPoint = nil
             return
         }
 
@@ -2067,6 +2125,12 @@ class GameScene: SKScene {
             spellBar?.handleTouch(at: point)
             spellBarTouchPoint = nil
         }
+
+        // Same for potion bar
+        if let point = potionBarTouchPoint {
+            potionBar?.handleTouch(at: point)
+            potionBarTouchPoint = nil
+        }
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -2074,6 +2138,7 @@ class GameScene: SKScene {
         longPressWork = nil
         dismissSpellTooltip()
         spellBarTouchPoint = nil
+        potionBarTouchPoint = nil
     }
 
     private func returnToMainMenu() {
@@ -2092,6 +2157,12 @@ class GameScene: SKScene {
     }
 
     private func handleHexTap(_ coord: HexCoord) {
+        // Ignore taps outside visible range
+        if coord.distance(to: player.position) > GameScene.visibleRange { return }
+
+        // Block actions while enemy turn is being processed (prevents double-turn in Rainbow)
+        if pendingEnemyTurn { return }
+
         // Rainbow mode: block movement/casting into lava
         if isRainbow && coord.q <= lavaColumn {
             return
@@ -2112,21 +2183,19 @@ class GameScene: SKScene {
             switch result {
             case .success(let effect):
                 isActingThisTurn = isTeam
-                // Apply actual game effects based on spell type
                 applySpellEffect(spell: spell, at: coord, effect: effect)
                 showSpellEffect(spell: spell, at: coord, effect: effect)
 
-                // In team mode, always deselect (passive spells still end your turn)
-                if !spell.isPassive || isTeam {
-                    selectSpell(nil)
-                    spellBar?.deselectAll()
-                    selectedPotion = nil
-                }
-                // In team mode, passive spells must explicitly advance the turn
-                if isTeam && spell.isPassive {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                        self?.markActivePlayerActed()
-                    }
+                selectSpell(nil)
+                spellBar?.deselectAll()
+                selectedPotion = nil
+
+                pendingEnemyTurn = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                    guard let self = self else { return }
+                    self.pendingEnemyTurn = false
+                    if self.isTeam { self.markActivePlayerActed() }
+                    else { self.processEnemyTurns() }
                 }
 
             case .failure(let error):
@@ -2145,13 +2214,14 @@ class GameScene: SKScene {
                 allBlocked = allBlocked.union(teammatePositions)
             }
 
-            isActingThisTurn = isTeam  // Lock out further actions immediately
+            let startPos = player.position
             player.moveTo(coord, blocked: allBlocked) { [weak self] in
                 guard let self = self else { return }
-                // Check if player reached any targets
-                self.checkInteractionsAtPosition(coord)
+                // Only count as an action if the player actually moved
+                guard self.player.position != startPos else { return }
+                self.isActingThisTurn = self.isTeam
+                self.checkInteractionsAtPosition(self.player.position)
                 self.checkChallengeCompletion()
-                // In team mode, movement counts as the player's action
                 if self.isTeam {
                     self.markActivePlayerActed()
                 }
@@ -2316,6 +2386,9 @@ class GameScene: SKScene {
     // MARK: - Interactive Element Handling
 
     private func checkInteractionsAtPosition(_ position: HexCoord) {
+        // Rainbow mode: collect potions on arrival
+        if isRainbow { collectPotionAtPlayer() }
+
         // Check for targets and other elements at or adjacent to player
         for (id, var element) in interactiveElements {
             let distance = position.distance(to: element.position)
@@ -2530,16 +2603,6 @@ class GameScene: SKScene {
             showSpellIconAnimation(spell: spell, at: worldScreenPos)
         }
 
-        // Trigger enemy turns after casting any spell (including passives like Blur)
-        if isTeam {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                self?.markActivePlayerActed()
-            }
-        } else {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                self?.processEnemyTurns()
-            }
-        }
     }
 
     private func showDamageNumber(_ damage: Int, at position: CGPoint) {
@@ -2659,8 +2722,9 @@ class GameScene: SKScene {
         let tooltip = SKNode()
         tooltip.zPosition = 150
 
-        // Build stats line
-        var statsText = "Range: \(spell.range)"
+        // Build stats line — potions are self-cast AoE, so show "Self" instead of range
+        let isPotion = spell.id.hasPrefix("potion-")
+        var statsText = isPotion ? "Self" : "Range: \(spell.range)"
         if spell.offenseDie > 0 {
             statsText += "  Dmg: d\(spell.offenseDie)"
         }
@@ -2676,7 +2740,7 @@ class GameScene: SKScene {
         if spell.producesLight {
             statsText += "  Light"
         }
-        let showMana = !isBlitz
+        let showMana = !isBlitz && !isRainbow
         let manaText = spell.manaCost < 0 ? "Mana: +\(abs(spell.manaCost))" : spell.manaCost > 0 ? "Mana: -\(spell.manaCost)" : "Mana: 0"
 
         // Measure text to size the card
@@ -3093,6 +3157,7 @@ class GameScene: SKScene {
         }
 
         checkAndMergeEnemies()
+        refreshEnemyStunVisuals()
 
         // Rainbow mode: advance lava, check zone completion, etc.
         rainbowAfterPlayerAction()
